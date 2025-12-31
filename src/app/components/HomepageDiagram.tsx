@@ -26,18 +26,18 @@ export default function HomepageDiagram() {
                     <div className="space-y-4">
                         <h2 className="font-bold text-xl text-slate-800">2. Key Components</h2>
                         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                             <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">PremiumHero</span>
                                 <span className="text-sm text-slate-600">Main navigation & Hero visuals (used in Homepage)</span>
-                             </div>
-                             <div className="flex items-center gap-2">
+                            </div>
+                            <div className="flex items-center gap-2">
                                 <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">PropertyCard</span>
                                 <span className="text-sm text-slate-600">Reusable card for Buy/Rent grids</span>
-                             </div>
-                             <div className="flex items-center gap-2">
+                            </div>
+                            <div className="flex items-center gap-2">
                                 <span className="bg-slate-100 text-slate-800 text-xs font-bold px-2 py-1 rounded">NewFooter</span>
                                 <span className="text-sm text-slate-600">Global footer component</span>
-                             </div>
+                            </div>
                         </div>
                     </div>
                 </div>
