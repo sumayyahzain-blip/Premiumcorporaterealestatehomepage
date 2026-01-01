@@ -29,10 +29,10 @@ const team = [
 
 export default function TeamSection() {
     return (
-        <section id="team" className="py-24 bg-white rounded-t-[60px] overflow-hidden shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.3)]">
+        <section id="team" className="py-24 bg-white overflow-hidden">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="text-center mb-16">
-                    <span className="inline-block bg-emerald-100 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Our Team</span>
+                    <span className="inline-block bg-amber-100 text-amber-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Our Team</span>
                     <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Meet Our Experts</h2>
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto">Dedicated professionals committed to finding your perfect property</p>
                 </div>
@@ -49,8 +49,8 @@ export default function TeamSection() {
                                 </div>
                             </div>
                             <div className="text-center">
-                                <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-emerald-600 transition-colors">{member.name}</h3>
-                                <p className="text-emerald-600 font-medium">{member.role}</p>
+                                <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-amber-600 transition-colors">{member.name}</h3>
+                                <p className="text-amber-600 font-medium">{member.role}</p>
                             </div>
                         </div>
                     ))}

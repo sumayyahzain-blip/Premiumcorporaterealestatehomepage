@@ -41,11 +41,11 @@ const testimonials = [
 
 export default function NewTestimonials() {
     return (
-        <section id="testimonials" className="py-24 bg-gradient-to-b from-white to-slate-50 rounded-t-[60px] overflow-hidden shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.3)]">
+        <section id="testimonials" className="py-24 bg-gradient-to-b from-white to-slate-50 overflow-hidden">
             <div className="max-w-7xl mx-auto px-6">
                 {/* Section Header */}
                 <div className="text-center mb-16">
-                    <span className="inline-block bg-emerald-100 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">
+                    <span className="inline-block bg-amber-100 text-amber-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">
                         Testimonials
                     </span>
                     <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
@@ -65,7 +65,7 @@ export default function NewTestimonials() {
                         >
                             {/* Quote icon */}
                             <div className="mb-6">
-                                <svg className="w-12 h-12 text-emerald-200" fill="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-12 h-12 text-amber-200" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
                                 </svg>
                             </div>
@@ -89,12 +89,12 @@ export default function NewTestimonials() {
                                 <img
                                     src={testimonial.image}
                                     alt={testimonial.name}
-                                    className="w-14 h-14 rounded-full object-cover ring-4 ring-emerald-100"
+                                    className="w-14 h-14 rounded-full object-cover ring-4 ring-amber-100"
                                 />
                                 <div>
                                     <div className="font-bold text-slate-900">{testimonial.name}</div>
                                     <div className="text-slate-500 text-sm">{testimonial.role}</div>
-                                    <div className="text-emerald-600 text-sm flex items-center gap-1">
+                                    <div className="text-amber-600 text-sm flex items-center gap-1">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         </svg>

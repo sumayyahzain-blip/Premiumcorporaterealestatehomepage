@@ -1,7 +1,32 @@
 import React from 'react';
-import { Home, DollarSign, TrendingUp, Users, Plus, FileText, Settings, AlertCircle, Bell, ArrowUpRight, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Home, DollarSign, TrendingUp, Users, Plus, FileText, Settings, AlertCircle, Bell, ArrowUpRight, Search, LogOut } from 'lucide-react';
+import { useAuth, useAuthActions } from '../../hooks';
+import { showInfoToast, showSuccessToast } from '../components/ToastContainer';
 
 export default function OwnerDashboard() {
+    const { user, isAuthenticated } = useAuth();
+    const { logout } = useAuthActions();
+
+    const handleLogout = () => {
+        logout();
+        showInfoToast('Logged Out', 'You have been signed out successfully');
+    };
+
+    const handleQuickAction = (action: string) => {
+        showInfoToast('Coming Soon', `${action} feature will be available soon!`);
+    };
+
+    const navigate = useNavigate();
+
+    const handleViewDetails = (propertyId: number) => {
+        navigate(`/property/${propertyId}`);
+    };
+
+    const handleManage = (propertyAddress: string) => {
+        showInfoToast('Property Management', `Opening management tools for ${propertyAddress}`);
+    };
+
     return (
         <div className="pt-24 pb-12 min-h-screen bg-gray-50">
             <div className="max-w-[1440px] mx-auto px-6">
@@ -10,17 +35,54 @@ export default function OwnerDashboard() {
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Owner Dashboard</h1>
-                        <p className="text-gray-500 mt-1">Welcome back, manage your properties and track performance</p>
+                        <p className="text-gray-500 mt-1">
+                            Welcome back{user?.firstName ? `, ${user.firstName}` : ''}! Manage your properties and track performance.
+                        </p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                        <button
+                            onClick={() => showInfoToast('Notifications', 'No new notifications')}
+                            className="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
+                        >
                             <Bell size={20} />
                         </button>
-                        <button className="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                        <button
+                            onClick={() => showInfoToast('Settings', 'Settings page coming soon!')}
+                            className="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
+                        >
                             <Settings size={20} />
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="p-2 bg-white border border-gray-200 rounded-lg text-red-500 hover:bg-red-50"
+                            title="Log out"
+                        >
+                            <LogOut size={20} />
                         </button>
                     </div>
                 </div>
+
+                {/* User Info Banner */}
+                {user && (
+                    <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 mb-8 text-white">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
+                                {user.firstName?.[0]}{user.lastName?.[0]}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold">{user.firstName} {user.lastName}</h2>
+                                <p className="text-emerald-100">{user.email}</p>
+                                <div className="flex gap-2 mt-2">
+                                    {user.roles.map(role => (
+                                        <span key={role} className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium capitalize">
+                                            {role.replace('_', ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -79,10 +141,13 @@ export default function OwnerDashboard() {
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-lg font-bold text-gray-900">My Properties</h2>
-                                <button className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                                <Link
+                                    to="/properties/new"
+                                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                                >
                                     <Plus size={16} />
                                     Add Property
-                                </button>
+                                </Link>
                             </div>
 
                             <div className="space-y-4">
@@ -111,10 +176,16 @@ export default function OwnerDashboard() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        <button className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                        <button
+                                            onClick={() => handleViewDetails(1)}
+                                            className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
+                                        >
                                             View Details
                                         </button>
-                                        <button className="flex-1 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700">
+                                        <button
+                                            onClick={() => handleManage('1234 Oak Street')}
+                                            className="flex-1 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700"
+                                        >
                                             Manage
                                         </button>
                                     </div>
@@ -145,10 +216,16 @@ export default function OwnerDashboard() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        <button className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                        <button
+                                            onClick={() => handleViewDetails(2)}
+                                            className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
+                                        >
                                             View Details
                                         </button>
-                                        <button className="flex-1 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700">
+                                        <button
+                                            onClick={() => handleManage('567 Pine Ave')}
+                                            className="flex-1 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700"
+                                        >
                                             Manage
                                         </button>
                                     </div>
@@ -179,10 +256,16 @@ export default function OwnerDashboard() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        <button className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                        <button
+                                            onClick={() => handleViewDetails(3)}
+                                            className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
+                                        >
                                             View Details
                                         </button>
-                                        <button className="flex-1 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700">
+                                        <button
+                                            onClick={() => handleManage('890 Maple Dr')}
+                                            className="flex-1 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700"
+                                        >
                                             Manage
                                         </button>
                                     </div>
@@ -244,17 +327,29 @@ export default function OwnerDashboard() {
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                             <h3 className="font-bold text-gray-900 mb-4">Quick Actions</h3>
                             <div className="space-y-3">
-                                <button className="w-full text-left px-4 py-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-colors">
-                                    Add New Property
+                                <Link
+                                    to="/properties/new"
+                                    className="block w-full text-left px-4 py-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-colors"
+                                >
+                                    ➕ Add New Property
+                                </Link>
+                                <button
+                                    onClick={() => handleQuickAction('Record Payment')}
+                                    className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors"
+                                >
+                                    💵 Record Payment
                                 </button>
-                                <button className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
-                                    Record Payment
+                                <button
+                                    onClick={() => handleQuickAction('Schedule Maintenance')}
+                                    className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors"
+                                >
+                                    🔧 Schedule Maintenance
                                 </button>
-                                <button className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
-                                    Schedule Maintenance
-                                </button>
-                                <button className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
-                                    Generate Report
+                                <button
+                                    onClick={() => handleQuickAction('Generate Report')}
+                                    className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors"
+                                >
+                                    📊 Generate Report
                                 </button>
                             </div>
                         </div>
@@ -307,6 +402,6 @@ export default function OwnerDashboard() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
