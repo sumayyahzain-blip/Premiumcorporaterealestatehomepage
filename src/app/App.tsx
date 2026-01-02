@@ -1,20 +1,21 @@
 import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Header from './components/Header';
-import Homepage from './pages/Homepage';
-import BuyListing from './pages/BuyListing';
-import RentListing from './pages/RentListing';
-import PropertyDetail from './pages/PropertyDetail';
-import OwnerDashboard from './pages/OwnerDashboard';
-import Pricing from './pages/Pricing';
-import CreatePropertyPage from './pages/CreatePropertyPage';
-import MyPropertiesPage from './pages/MyPropertiesPage';
+import Homepage from './pages/public/Homepage';
+import BuyListing from './pages/public/BuyListing';
+import RentListing from './pages/public/RentListing';
+import PropertyDetail from './pages/public/PropertyDetail';
+import OwnerDashboard from './pages/customer/OwnerDashboard';
+import Pricing from './pages/public/Pricing';
+import CreatePropertyPage from './pages/customer/CreatePropertyPage';
+import MyPropertiesPage from './pages/customer/MyPropertiesPage';
 
 // Auth pages
 import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/auth';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
+import { UsersPage } from './pages/admin';
 
 // Auth & Error components
 import AuthProvider from './components/AuthProvider';
@@ -158,7 +159,7 @@ export default function App() {
               path="/admin/users"
               element={
                 <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <PlaceholderPage title="User Management" description="Manage platform users, verify KYC, and handle permissions." isAdmin />
+                  <UsersPage />
                 </RoleBasedRoute>
               }
             />

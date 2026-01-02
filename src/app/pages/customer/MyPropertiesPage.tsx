@@ -1,17 +1,17 @@
 /**
  * GRADE A REALTY - My Properties Page
  * Property management for owners/investors with full CRUD
- * Phase 1 Implementation
+ * Phase 2 Implementation
  */
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Eye, MoreVertical, Search, Filter, Building2 } from 'lucide-react';
-import { PageHeader, EmptyState, LoadingState } from '../components/PageHeader';
-import { useAuth } from '../../hooks';
-import { mockDataService, MOCK_PROPERTIES } from '../../services/mockDataService';
-import { showSuccessToast, showErrorToast, showInfoToast } from '../components/ToastContainer';
-import type { Property } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit2, Trash2, Eye, Search, Building2, Loader2, AlertCircle } from 'lucide-react';
+import { PageHeader, EmptyState } from '../../components/PageHeader';
+import { useAuth } from '../../../hooks';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../../components/ToastContainer';
+import { api } from '../../../services/api';
+import type { Property } from '../../../types';
 
 export default function MyPropertiesPage() {
     const navigate = useNavigate();
@@ -20,30 +20,46 @@ export default function MyPropertiesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
     // Load properties
     useEffect(() => {
+        let ismounted = true;
         const loadProperties = async () => {
+            if (!user?.id) return;
+
             setIsLoading(true);
             try {
-                // Simulate API call - in production, filter by owner
-                await new Promise(resolve => setTimeout(resolve, 800));
-                // For demo, show first 4 properties as "owned" by current user
-                setProperties(MOCK_PROPERTIES.slice(0, 4));
+                // In production, we filter by owner. 
+                // For Phase 2 demo, we use the ownerId filter we implemented.
+                // Assuming current user is an owner.
+                const response = await api.properties.list({
+                    ownerId: user.id || 'user-001' // Fallback for dev if user.id is not set
+                });
+
+                if (ismounted) {
+                    if (response.success && response.data) {
+                        setProperties(response.data.data);
+                    } else {
+                        showErrorToast('Error', response.error?.message || 'Failed to load properties');
+                    }
+                }
             } catch (error) {
-                showErrorToast('Error', 'Failed to load properties');
+                if (ismounted) showErrorToast('Error', 'Failed to load properties');
             } finally {
-                setIsLoading(false);
+                if (ismounted) setIsLoading(false);
             }
         };
+
         loadProperties();
+
+        return () => { ismounted = false; };
     }, [user?.id]);
 
-    // Filter properties
+    // Client-side filtering for Search/Status (since API list might not support combined complex filters in this mock phase perfectly, or to keep UI responsive)
+    // Actually API supports combined filters now, but let's stick to client filtering for search to avoid excessive API calls on every keystroke for this page
     const filteredProperties = properties.filter(p => {
         const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.city.toLowerCase().includes(searchQuery.toLowerCase());
+            (p.city && p.city.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -51,13 +67,22 @@ export default function MyPropertiesPage() {
     const handleEdit = (propertyId: string) => {
         showInfoToast('Edit Property', 'Navigating to edit form...');
         // In production: navigate(`/properties/${propertyId}/edit`);
-        navigate('/properties/new'); // For demo, reuse create form
+        navigate('/properties/new'); // For demo
     };
 
-    const handleDelete = (propertyId: string) => {
+    const handleDelete = async (propertyId: string) => {
         if (confirm('Are you sure you want to delete this property?')) {
-            setProperties(prev => prev.filter(p => p.id !== propertyId));
-            showSuccessToast('Deleted', 'Property has been removed');
+            try {
+                const response = await api.properties.delete(propertyId);
+                if (response.success) {
+                    setProperties(prev => prev.filter(p => p.id !== propertyId));
+                    showSuccessToast('Deleted', 'Property has been removed');
+                } else {
+                    showErrorToast('Error', response.error?.message || 'Failed to delete');
+                }
+            } catch (err) {
+                showErrorToast('Error', 'Failed to delete property');
+            }
         }
     };
 
@@ -92,6 +117,12 @@ export default function MyPropertiesPage() {
     const formatCurrency = (value: number | null) => {
         if (!value) return '-';
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
+    };
+
+    // Helper for image
+    const getImage = (p: Property) => {
+        // Fallback for missing type definition property
+        return (p as any).primaryImageUrl || 'https://via.placeholder.com/80';
     };
 
     return (
@@ -143,7 +174,10 @@ export default function MyPropertiesPage() {
 
                 {/* Content */}
                 {isLoading ? (
-                    <LoadingState message="Loading your properties..." />
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                        <Loader2 size={32} className="animate-spin mb-2" />
+                        <p>Loading your properties...</p>
+                    </div>
                 ) : filteredProperties.length === 0 ? (
                     <div className="bg-white rounded-xl border border-gray-200">
                         <EmptyState
@@ -180,7 +214,7 @@ export default function MyPropertiesPage() {
                                     {/* Property Info */}
                                     <div className="md:col-span-4 flex items-center gap-4">
                                         <img
-                                            src={property.primaryImageUrl || 'https://via.placeholder.com/80'}
+                                            src={getImage(property)}
                                             alt={property.title}
                                             className="w-16 h-16 rounded-lg object-cover"
                                         />

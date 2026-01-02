@@ -1,31 +1,20 @@
 /**
  * GRADE A REALTY - Admin Dashboard Page
  * Main dashboard for admin users with platform overview
- * Phase 1 Implementation
+ * Phase 2 Implementation (Connected to API)
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Building2, Users, DollarSign, TrendingUp, AlertCircle,
     Clock, CheckCircle, XCircle, ArrowUpRight, ArrowRight
 } from 'lucide-react';
-import { PageHeader, EmptyState, LoadingState } from '../../components/PageHeader';
+import { PageHeader, LoadingState } from '../../components/PageHeader';
+import { api } from '../../../services/api';
+import type { DashboardStatsResponse } from '../../../types/api';
 
-// Mock admin stats
-const adminStats = {
-    totalProperties: 156,
-    activeListings: 124,
-    pendingApprovals: 8,
-    totalUsers: 342,
-    activeRenters: 89,
-    activeOwners: 47,
-    monthlyRevenue: 45600,
-    platformFees: 2280,
-    pendingPayments: 12,
-    maintenanceRequests: 5,
-};
-
+// Mock lists (To be implemented in future phases)
 const pendingItems = [
     { id: 1, type: 'Property Approval', title: 'Modern Luxury Villa', user: 'John Owner', time: '2 hours ago', value: '$2,450,000' },
     { id: 2, type: 'KYC Verification', title: 'Sarah Johnson', user: 'New Owner', time: '4 hours ago', value: null },
@@ -43,7 +32,27 @@ const recentActivity = [
 ];
 
 export default function AdminDashboard() {
-    const [isLoading, setIsLoading] = React.useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [stats, setStats] = useState<DashboardStatsResponse | null>(null);
+
+    useEffect(() => {
+        let ismounted = true;
+        const fetchStats = async () => {
+            try {
+                const response = await api.dashboard.getStats();
+                if (ismounted && response.success && response.data) {
+                    setStats(response.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch dashboard stats", error);
+            } finally {
+                if (ismounted) setIsLoading(false);
+            }
+        };
+
+        fetchStats();
+        return () => { ismounted = false; };
+    }, []);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
@@ -57,7 +66,7 @@ export default function AdminDashboard() {
                 badge={{ label: 'Admin', color: 'green' }}
             />
 
-            {isLoading ? (
+            {isLoading || !stats ? (
                 <LoadingState message="Loading dashboard data..." />
             ) : (
                 <>
@@ -71,10 +80,10 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className="text-sm font-medium text-gray-600">Total Properties</span>
                             </div>
-                            <div className="text-2xl font-bold text-gray-900">{adminStats.totalProperties}</div>
+                            <div className="text-2xl font-bold text-gray-900">{stats.totalProperties}</div>
                             <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-gray-500">{adminStats.activeListings} active</span>
-                                <span className="text-xs text-amber-600 font-medium">{adminStats.pendingApprovals} pending</span>
+                                <span className="text-xs text-gray-500">{stats.activeListings} active</span>
+                                <span className="text-xs text-amber-600 font-medium">{stats.pendingApprovals} pending</span>
                             </div>
                         </div>
 
@@ -86,10 +95,10 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className="text-sm font-medium text-gray-600">Total Users</span>
                             </div>
-                            <div className="text-2xl font-bold text-gray-900">{adminStats.totalUsers}</div>
+                            <div className="text-2xl font-bold text-gray-900">{stats.totalUsers}</div>
                             <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-gray-500">{adminStats.activeOwners} owners</span>
-                                <span className="text-xs text-gray-500">{adminStats.activeRenters} renters</span>
+                                <span className="text-xs text-gray-500">{stats.activeOwners} owners</span>
+                                <span className="text-xs text-gray-500">{stats.activeRenters} renters</span>
                             </div>
                         </div>
 
@@ -101,10 +110,10 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className="text-sm font-medium text-gray-600">Monthly Revenue</span>
                             </div>
-                            <div className="text-2xl font-bold text-gray-900">{formatCurrency(adminStats.monthlyRevenue)}</div>
+                            <div className="text-2xl font-bold text-gray-900">{formatCurrency(stats.monthlyRevenue)}</div>
                             <div className="flex items-center gap-1 mt-2">
                                 <ArrowUpRight size={14} className="text-emerald-500" />
-                                <span className="text-xs text-emerald-600 font-medium">+12.5% from last month</span>
+                                <span className="text-xs text-emerald-600 font-medium">+{stats.incomeTrend}% from last month</span>
                             </div>
                         </div>
 
@@ -116,7 +125,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className="text-sm font-medium text-gray-600">Platform Fees</span>
                             </div>
-                            <div className="text-2xl font-bold text-gray-900">{formatCurrency(adminStats.platformFees)}</div>
+                            <div className="text-2xl font-bold text-gray-900">{formatCurrency(stats.platformFees)}</div>
                             <div className="flex items-center justify-between mt-2">
                                 <span className="text-xs text-gray-500">5% of transactions</span>
                             </div>
@@ -124,28 +133,28 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Alerts */}
-                    {(adminStats.pendingApprovals > 0 || adminStats.pendingPayments > 0 || adminStats.maintenanceRequests > 0) && (
+                    {(stats.pendingApprovals > 0 || stats.pendingPayments > 0 || stats.maintenanceRequests > 0) && (
                         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8">
                             <div className="flex items-center gap-3 mb-3">
                                 <AlertCircle size={20} className="text-amber-600" />
                                 <span className="font-semibold text-amber-900">Items Requiring Attention</span>
                             </div>
                             <div className="flex flex-wrap gap-4 text-sm">
-                                {adminStats.pendingApprovals > 0 && (
+                                {stats.pendingApprovals > 0 && (
                                     <Link to="/admin/properties" className="flex items-center gap-2 text-amber-800 hover:text-amber-900 font-medium">
-                                        {adminStats.pendingApprovals} property approvals pending
+                                        {stats.pendingApprovals} property approvals pending
                                         <ArrowRight size={14} />
                                     </Link>
                                 )}
-                                {adminStats.pendingPayments > 0 && (
+                                {stats.pendingPayments > 0 && (
                                     <Link to="/admin/transactions" className="flex items-center gap-2 text-amber-800 hover:text-amber-900 font-medium">
-                                        {adminStats.pendingPayments} payments to process
+                                        {stats.pendingPayments} payments to process
                                         <ArrowRight size={14} />
                                     </Link>
                                 )}
-                                {adminStats.maintenanceRequests > 0 && (
+                                {stats.maintenanceRequests > 0 && (
                                     <Link to="/admin/maintenance" className="flex items-center gap-2 text-amber-800 hover:text-amber-900 font-medium">
-                                        {adminStats.maintenanceRequests} maintenance requests
+                                        {stats.maintenanceRequests} maintenance requests
                                         <ArrowRight size={14} />
                                     </Link>
                                 )}

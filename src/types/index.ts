@@ -539,6 +539,7 @@ export interface PropertySearchFilters {
     listingType?: ListingType;
     propertyType?: PropertyType[];
     status?: PropertyStatus;
+    ownerId?: string;
 
     city?: string;
     state?: string;

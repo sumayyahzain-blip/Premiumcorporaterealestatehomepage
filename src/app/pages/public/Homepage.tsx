@@ -1,10 +1,10 @@
 import React from 'react';
-import PremiumHero from '../components/PremiumHero';
-import NewFeaturedListings from '../components/NewFeaturedListings';
-import WhyChooseUs from '../components/WhyChooseUs';
-import NewTestimonials from '../components/NewTestimonials';
-import TeamSection from '../components/TeamSection';
-import NewFooter from '../components/NewFooter';
+import PremiumHero from '../../components/PremiumHero';
+import NewFeaturedListings from '../../components/NewFeaturedListings';
+import WhyChooseUs from '../../components/WhyChooseUs';
+import NewTestimonials from '../../components/NewTestimonials';
+import TeamSection from '../../components/TeamSection';
+import NewFooter from '../../components/NewFooter';
 
 export default function Homepage() {
     return (

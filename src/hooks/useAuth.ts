@@ -1,11 +1,12 @@
 /**
  * GRADE A REALTY - Authentication Hook
  * React hook for authentication operations
- * Phase 1 Implementation
+ * Phase 2 Implementation (Connected to API)
  */
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useAuthStore, showSuccessToast, showErrorToast } from '../store';
+import { useNotificationStore } from '../store/notificationStore';
 import type {
     LoginRequest,
     RegisterRequest,
@@ -13,80 +14,9 @@ import type {
     ResetPasswordRequest,
     ChangePasswordRequest,
     Verify2FARequest,
-    AuthUser,
 } from '../types/auth';
-import { getPermissionsForRoles } from '../types/permissions';
-
-// =============================================================================
-// MOCK API (Will be replaced with real API calls)
-// =============================================================================
-
-// Simulated API delay
-const apiDelay = (ms: number = 1000) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Mock user database
-const mockUsers: Record<string, { user: AuthUser; password: string }> = {
-    'admin@gradea.realty': {
-        user: {
-            id: 'a0000000-0000-0000-0000-000000000001',
-            email: 'admin@gradea.realty',
-            firstName: 'System',
-            lastName: 'Administrator',
-            phone: null,
-            avatarUrl: null,
-            emailVerified: true,
-            phoneVerified: false,
-            kycStatus: 'verified',
-            twoFactorEnabled: false,
-            status: 'active',
-            roles: ['super_admin'],
-            permissions: [],
-            createdAt: new Date().toISOString(),
-            lastLoginAt: null,
-        },
-        password: 'SuperAdmin123!',
-    },
-    'owner@example.com': {
-        user: {
-            id: 'b0000000-0000-0000-0000-000000000002',
-            email: 'owner@example.com',
-            firstName: 'John',
-            lastName: 'Owner',
-            phone: '+1234567890',
-            avatarUrl: null,
-            emailVerified: true,
-            phoneVerified: true,
-            kycStatus: 'verified',
-            twoFactorEnabled: false,
-            status: 'active',
-            roles: ['owner', 'investor'],
-            permissions: [],
-            createdAt: new Date().toISOString(),
-            lastLoginAt: null,
-        },
-        password: 'OwnerPass123!',
-    },
-    'renter@example.com': {
-        user: {
-            id: 'c0000000-0000-0000-0000-000000000003',
-            email: 'renter@example.com',
-            firstName: 'Jane',
-            lastName: 'Renter',
-            phone: '+1234567891',
-            avatarUrl: null,
-            emailVerified: true,
-            phoneVerified: false,
-            kycStatus: 'verified',
-            twoFactorEnabled: false,
-            status: 'active',
-            roles: ['renter'],
-            permissions: [],
-            createdAt: new Date().toISOString(),
-            lastLoginAt: null,
-        },
-        password: 'RenterPass123!',
-    },
-};
+import { UserRole } from '../types';
+import { api } from '../services/api';
 
 // =============================================================================
 // HOOK
@@ -113,11 +43,31 @@ export function useAuthHook() {
     } = useAuthStore();
 
     // Token refresh timer ref
-    const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const refreshTimerRef = useRef<any>(null);
 
     // ---------------------------------------------------------------------------
     // TOKEN REFRESH LOGIC
     // ---------------------------------------------------------------------------
+
+    const refreshTokens = useCallback(async (): Promise<void> => {
+        if (!refreshToken) {
+            throw new Error('No refresh token available');
+        }
+
+        try {
+            const response = await api.auth.refresh({ refreshToken });
+
+            if (response.success && response.data) {
+                const { accessToken: newAccess, refreshToken: newRefresh, expiresIn } = response.data;
+                setTokens(newAccess, newRefresh, expiresIn);
+                scheduleTokenRefresh();
+            } else {
+                throw new Error('Token refresh failed');
+            }
+        } catch (error) {
+            throw error;
+        }
+    }, [refreshToken, setTokens]); // Added refreshTokens to dependency if needed, but it uses setTokens which is stable
 
     const scheduleTokenRefresh = useCallback(() => {
         // Clear existing timer
@@ -133,17 +83,35 @@ export function useAuthHook() {
 
         refreshTimerRef.current = setTimeout(async () => {
             try {
+                // Must call the function derived from store/component logic
                 await refreshTokens();
             } catch (error) {
                 console.error('Token refresh failed:', error);
                 storeLogout();
             }
         }, refreshIn);
-    }, [getTimeUntilExpiry]);
+    }, [getTimeUntilExpiry, refreshTokens, storeLogout]);
+
 
     // ---------------------------------------------------------------------------
     // INITIALIZE SESSION
     // ---------------------------------------------------------------------------
+
+    const fetchCurrentUser = useCallback(async (): Promise<void> => {
+        try {
+            const response = await api.auth.me();
+            if (response.success && response.data) {
+                const apiUser = response.data;
+                // Map roles for AuthUser (UserRole[])
+                const authUserRoles: UserRole[] = apiUser.roles?.map(r => r.role) || [];
+                updateUser({ ...apiUser, roles: authUserRoles });
+            } else {
+                storeLogout();
+            }
+        } catch (error) {
+            // storeLogout(); // Only logout on auth error?
+        }
+    }, [updateUser, storeLogout]);
 
     const initializeSession = useCallback(async () => {
         setLoading(true);
@@ -165,7 +133,7 @@ export function useAuthHook() {
         } finally {
             setLoading(false);
         }
-    }, [accessToken, refreshToken, isTokenExpired]);
+    }, [accessToken, refreshToken, isTokenExpired, refreshTokens, fetchCurrentUser, scheduleTokenRefresh, storeLogout, setLoading]);
 
     // Run on mount
     useEffect(() => {
@@ -176,7 +144,8 @@ export function useAuthHook() {
                 clearTimeout(refreshTimerRef.current);
             }
         };
-    }, []);
+    }, []); // Check deps? initializeSession changes if auth state changes... might be cyclic. 
+    // Typically init session runs once on mount.
 
     // ---------------------------------------------------------------------------
     // AUTH METHODS
@@ -190,54 +159,32 @@ export function useAuthHook() {
         setError(null);
 
         try {
-            await apiDelay(800);
+            const response = await api.auth.login(data);
 
-            // Mock validation
-            const mockUser = mockUsers[data.email.toLowerCase()];
+            if (response.success && response.data) {
+                const { user, accessToken, refreshToken, expiresIn, requires2FA: is2FARequired } = response.data;
 
-            if (!mockUser || mockUser.password !== data.password) {
-                setError({
-                    code: 'INVALID_CREDENTIALS',
-                    message: 'Invalid email or password',
-                });
-                setLoading(false);
-                return false;
+                if (is2FARequired) {
+                    // Assuming user.id or similar acts as session identifier for now
+                    set2FARequired(true, user.id);
+                    setLoading(false);
+                    return true;
+                }
+
+                if (user && accessToken && refreshToken) {
+                    storeLogin(user, accessToken, refreshToken, expiresIn);
+                    scheduleTokenRefresh();
+                    showSuccessToast('Welcome back!', `Logged in as ${user.email}`);
+                    return true;
+                }
             }
 
-            if (mockUser.user.status === 'suspended') {
-                setError({
-                    code: 'ACCOUNT_SUSPENDED',
-                    message: 'Your account has been suspended. Please contact support.',
-                });
-                setLoading(false);
-                return false;
-            }
+            setError({
+                code: response.error?.code || 'LOGIN_ERROR',
+                message: response.error?.message || 'Login failed',
+            });
+            return false;
 
-            // Check if 2FA required
-            if (mockUser.user.twoFactorEnabled) {
-                set2FARequired(true, mockUser.user.id);
-                setLoading(false);
-                return true;
-            }
-
-            // Generate mock tokens
-            const accessToken = `mock-access-token-${Date.now()}`;
-            const refreshToken = `mock-refresh-token-${Date.now()}`;
-            const expiresIn = 3600; // 1 hour
-
-            // Update user with permissions
-            const userWithPermissions: AuthUser = {
-                ...mockUser.user,
-                permissions: getPermissionsForRoles(mockUser.user.roles),
-                lastLoginAt: new Date().toISOString(),
-            };
-
-            storeLogin(userWithPermissions, accessToken, refreshToken, expiresIn);
-            scheduleTokenRefresh();
-
-            showSuccessToast('Welcome back!', `Logged in as ${userWithPermissions.email}`);
-
-            return true;
         } catch (error) {
             setError({
                 code: 'LOGIN_ERROR',
@@ -257,23 +204,22 @@ export function useAuthHook() {
         setError(null);
 
         try {
-            await apiDelay(500);
+            const response = await api.auth.verify2FA({ code: data.code });
 
-            // Mock 2FA verification (any 6-digit code works)
-            if (!/^\d{6}$/.test(data.code)) {
-                setError({
-                    code: 'INVALID_2FA_CODE',
-                    message: 'Invalid verification code',
-                });
-                setLoading(false);
-                return false;
+            if (response.success && response.data) {
+                const { user, accessToken, refreshToken, expiresIn } = response.data;
+                storeLogin(user, accessToken, refreshToken, expiresIn);
+                scheduleTokenRefresh();
+                set2FARequired(false);
+                showSuccessToast('Verification successful');
+                return true;
             }
 
-            // In real implementation, validate code and return tokens
-            set2FARequired(false);
-            showSuccessToast('Verification successful');
-
-            return true;
+            setError({
+                code: response.error?.code || 'INVALID_2FA_CODE',
+                message: response.error?.message || 'Invalid verification code',
+            });
+            return false;
         } catch (error) {
             setError({
                 code: '2FA_ERROR',
@@ -293,63 +239,26 @@ export function useAuthHook() {
         setError(null);
 
         try {
-            await apiDelay(1200);
+            const response = await api.auth.register(data);
 
-            // Check if email already exists
-            if (mockUsers[data.email.toLowerCase()]) {
-                setError({
-                    code: 'EMAIL_EXISTS',
-                    message: 'An account with this email already exists',
-                    field: 'email',
-                });
-                setLoading(false);
-                return false;
+            if (response.success && response.data) {
+                const { user, accessToken, refreshToken, expiresIn } = response.data;
+                storeLogin(user, accessToken, refreshToken, expiresIn);
+                scheduleTokenRefresh();
+                showSuccessToast(
+                    'Account created!',
+                    'Please check your email to verify your account'
+                );
+                return true;
             }
 
-            // Validate passwords match
-            if (data.password !== data.confirmPassword) {
-                setError({
-                    code: 'PASSWORD_MISMATCH',
-                    message: 'Passwords do not match',
-                    field: 'confirmPassword',
-                });
-                setLoading(false);
-                return false;
-            }
+            setError({
+                code: response.error?.code || 'REGISTER_ERROR',
+                message: response.error?.message || 'Registration failed',
+                field: response.error?.details?.field
+            });
+            return false;
 
-            // Create mock user
-            const newUser: AuthUser = {
-                id: `user-${Date.now()}`,
-                email: data.email,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                phone: data.phone || null,
-                avatarUrl: null,
-                emailVerified: false,
-                phoneVerified: false,
-                kycStatus: 'pending',
-                twoFactorEnabled: false,
-                status: 'active',
-                roles: [], // No roles until verified
-                permissions: [],
-                createdAt: new Date().toISOString(),
-                lastLoginAt: null,
-            };
-
-            // Generate mock tokens
-            const accessToken = `mock-access-token-${Date.now()}`;
-            const refreshToken = `mock-refresh-token-${Date.now()}`;
-            const expiresIn = 3600;
-
-            storeLogin(newUser, accessToken, refreshToken, expiresIn);
-            scheduleTokenRefresh();
-
-            showSuccessToast(
-                'Account created!',
-                'Please check your email to verify your account'
-            );
-
-            return true;
         } catch (error) {
             setError({
                 code: 'REGISTER_ERROR',
@@ -371,8 +280,7 @@ export function useAuthHook() {
                 clearTimeout(refreshTimerRef.current);
             }
 
-            // In real implementation, invalidate tokens on server
-            await apiDelay(300);
+            await api.auth.logout();
 
             storeLogout();
             showInfoToast('Logged out', 'You have been logged out successfully');
@@ -383,38 +291,6 @@ export function useAuthHook() {
     };
 
     /**
-     * Refresh access token
-     */
-    const refreshTokens = async (): Promise<void> => {
-        if (!refreshToken) {
-            throw new Error('No refresh token available');
-        }
-
-        try {
-            await apiDelay(300);
-
-            // Generate new tokens
-            const newAccessToken = `mock-access-token-${Date.now()}`;
-            const newRefreshToken = `mock-refresh-token-${Date.now()}`;
-            const expiresIn = 3600;
-
-            setTokens(newAccessToken, newRefreshToken, expiresIn);
-            scheduleTokenRefresh();
-        } catch (error) {
-            throw new Error('Token refresh failed');
-        }
-    };
-
-    /**
-     * Fetch current user data
-     */
-    const fetchCurrentUser = async (): Promise<void> => {
-        // In real implementation, call /api/auth/me
-        await apiDelay(300);
-        // User data would be fetched and updated here
-    };
-
-    /**
      * Request password reset
      */
     const forgotPassword = async (data: ForgotPasswordRequest): Promise<boolean> => {
@@ -422,15 +298,19 @@ export function useAuthHook() {
         setError(null);
 
         try {
-            await apiDelay(1000);
-
-            // Always show success to prevent email enumeration
-            showSuccessToast(
-                'Reset email sent',
-                'If an account exists with this email, you will receive password reset instructions'
-            );
-
-            return true;
+            const response = await api.auth.forgotPassword(data);
+            if (response.success) {
+                showSuccessToast(
+                    'Reset email sent',
+                    'If an account exists with this email, you will receive password reset instructions'
+                );
+                return true;
+            }
+            setError({
+                code: response.error?.code || 'FORGOT_PASSWORD_ERROR',
+                message: response.error?.message || 'Failed to send reset email',
+            });
+            return false;
         } catch (error) {
             setError({
                 code: 'FORGOT_PASSWORD_ERROR',
@@ -450,24 +330,19 @@ export function useAuthHook() {
         setError(null);
 
         try {
-            await apiDelay(1000);
-
-            if (data.password !== data.confirmPassword) {
-                setError({
-                    code: 'PASSWORD_MISMATCH',
-                    message: 'Passwords do not match',
-                    field: 'confirmPassword',
-                });
-                setLoading(false);
-                return false;
+            const response = await api.auth.resetPassword(data);
+            if (response.success) {
+                showSuccessToast(
+                    'Password reset successful',
+                    'You can now log in with your new password'
+                );
+                return true;
             }
-
-            showSuccessToast(
-                'Password reset successful',
-                'You can now log in with your new password'
-            );
-
-            return true;
+            setError({
+                code: response.error?.code || 'RESET_PASSWORD_ERROR',
+                message: response.error?.message || 'Failed to reset password',
+            });
+            return false;
         } catch (error) {
             setError({
                 code: 'RESET_PASSWORD_ERROR',
@@ -487,21 +362,16 @@ export function useAuthHook() {
         setError(null);
 
         try {
-            await apiDelay(800);
-
-            if (data.newPassword !== data.confirmNewPassword) {
-                setError({
-                    code: 'PASSWORD_MISMATCH',
-                    message: 'New passwords do not match',
-                    field: 'confirmNewPassword',
-                });
-                setLoading(false);
-                return false;
+            const response = await api.auth.changePassword(data);
+            if (response.success) {
+                showSuccessToast('Password changed', 'Your password has been updated');
+                return true;
             }
-
-            showSuccessToast('Password changed', 'Your password has been updated');
-
-            return true;
+            setError({
+                code: response.error?.code || 'CHANGE_PASSWORD_ERROR',
+                message: response.error?.message || 'Failed to change password',
+            });
+            return false;
         } catch (error) {
             setError({
                 code: 'CHANGE_PASSWORD_ERROR',
@@ -520,13 +390,11 @@ export function useAuthHook() {
         setLoading(true);
 
         try {
-            await apiDelay(500);
-
+            await api.auth.resendVerification();
             showSuccessToast(
                 'Verification email sent',
                 'Please check your inbox'
             );
-
             return true;
         } catch (error) {
             showErrorToast('Failed to send verification email');
@@ -541,16 +409,12 @@ export function useAuthHook() {
      */
     const verifyEmail = async (token: string): Promise<boolean> => {
         setLoading(true);
-
         try {
-            await apiDelay(800);
-
+            await api.auth.verifyEmail(token);
             if (user) {
                 updateUser({ emailVerified: true });
             }
-
             showSuccessToast('Email verified', 'Your email has been verified');
-
             return true;
         } catch (error) {
             showErrorToast('Invalid or expired verification link');
@@ -597,6 +461,3 @@ const showInfoToast = (title: string, message?: string) => {
         message,
     });
 };
-
-// Import at top level for the helper
-import { useNotificationStore } from '../store/notificationStore';

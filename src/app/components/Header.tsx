@@ -1,8 +1,23 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuthHook } from '../../hooks';
+import { User, LogOut, LayoutDashboard, Settings } from 'lucide-react';
 
 export default function Header() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Auth State
+    const { isAuthenticated, user, logout } = useAuthHook();
+
+    const isActive = (path: string) => location.pathname === path;
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+        setIsMobileMenuOpen(false);
+    };
 
     return (
         <header className="fixed top-0 left-0 right-0 z-[100] bg-[#0a1628]/95 backdrop-blur-md border-b border-white/10 shadow-lg">
@@ -21,34 +36,141 @@ export default function Header() {
 
                     {/* Navigation Links */}
                     <div className="hidden md:flex items-center gap-8">
-                        <Link to="/" className="relative text-white font-medium hover:text-amber-400 transition-colors group">
-                            HOME
-                            <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-cyan-400"></span>
-                        </Link>
-                        <Link to="/buy" className="text-white/80 font-medium hover:text-white transition-colors">BUY</Link>
-                        <Link to="/rent" className="text-white/80 font-medium hover:text-white transition-colors">RENT</Link>
-                        <Link to="/pricing" className="text-white/80 font-medium hover:text-white transition-colors">PRICING</Link>
-                        <Link to="/dashboard" className="text-white/80 font-medium hover:text-white transition-colors">DASHBOARD</Link>
+                        {[
+                            { path: '/', label: 'HOME' },
+                            { path: '/buy', label: 'BUY' },
+                            { path: '/rent', label: 'RENT' },
+                            { path: '/pricing', label: 'PRICING' },
+                            // Only show Dashboard if logged in? Or for everyone? Assuming protected route elsewhere.
+                            ...(isAuthenticated ? [{ path: '/dashboard', label: 'DASHBOARD' }] : []),
+                        ].map(({ path, label }) => {
+                            const active = isActive(path);
+                            return (
+                                <Link
+                                    key={path}
+                                    to={path}
+                                    className={`relative font-medium transition-colors group ${active ? 'text-white hover:text-amber-400' : 'text-white/80 hover:text-white'
+                                        }`}
+                                >
+                                    {label}
+                                    {active && <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-cyan-400"></span>}
+                                </Link>
+                            );
+                        })}
                     </div>
 
                     {/* Auth Buttons */}
                     <div className="hidden md:flex items-center gap-4">
-                        <Link to="/dashboard" className="text-white/80 hover:text-white font-medium transition-colors">
-                            Register
-                        </Link>
-                        <Link to="/dashboard" className="border border-white/30 hover:border-amber-400 hover:text-amber-400 text-white px-6 py-2 rounded-lg font-medium transition-all">
-                            Sign In
-                        </Link>
+                        {isAuthenticated && user ? (
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 text-white">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-500 font-bold">
+                                        {user.firstName?.[0] || user.email[0].toUpperCase()}
+                                    </div>
+                                    <span className="text-sm font-medium">{user.firstName || 'User'}</span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-white/70 hover:text-white transition-colors"
+                                    title="Logout"
+                                >
+                                    <LogOut size={20} />
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <Link to="/register" className="text-white/80 hover:text-white font-medium transition-colors">
+                                    Register
+                                </Link>
+                                <Link to="/login" className="border border-white/30 hover:border-amber-400 hover:text-amber-400 text-white px-6 py-2 rounded-lg font-medium transition-all">
+                                    Sign In
+                                </Link>
+                            </>
+                        )}
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <button className="md:hidden text-white">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                    <button
+                        className="md:hidden text-white p-2"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        {isMobileMenuOpen ? (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        )}
                     </button>
                 </div>
             </nav>
+
+            {/* Mobile Menu Dropdown */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden absolute top-full left-0 right-0 bg-[#0a1628] border-b border-white/10 shadow-xl animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex flex-col py-4 px-6 gap-4">
+                        {[
+                            { path: '/', label: 'HOME' },
+                            { path: '/buy', label: 'BUY' },
+                            { path: '/rent', label: 'RENT' },
+                            { path: '/pricing', label: 'PRICING' },
+                            ...(isAuthenticated ? [{ path: '/dashboard', label: 'DASHBOARD' }] : []),
+                        ].map(({ path, label }) => (
+                            <Link
+                                key={path}
+                                to={path}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`text-sm font-medium transition-colors ${isActive(path) ? 'text-amber-400' : 'text-white/80 hover:text-white'
+                                    }`}
+                            >
+                                {label}
+                            </Link>
+                        ))}
+
+                        <div className="h-px bg-white/10 my-2" />
+
+                        {isAuthenticated && user ? (
+                            <>
+                                <div className="flex items-center gap-3 py-2 text-white">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-500 font-bold">
+                                        {user.firstName?.[0] || user.email[0].toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">{user.firstName} {user.lastName}</div>
+                                        <div className="text-xs text-white/50">{user.email}</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-left text-white/80 hover:text-white text-sm font-medium flex items-center gap-2"
+                                >
+                                    <LogOut size={16} />
+                                    Sign Out
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    to="/register"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="text-white/80 hover:text-white text-sm font-medium"
+                                >
+                                    Register
+                                </Link>
+                                <Link
+                                    to="/login"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="text-center border border-white/30 text-white py-2 rounded-lg text-sm font-medium hover:border-amber-400 hover:text-amber-400 transition-all"
+                                >
+                                    Sign In
+                                </Link>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </header>
     );
 }

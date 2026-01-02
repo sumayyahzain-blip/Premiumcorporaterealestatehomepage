@@ -1,13 +1,14 @@
 /**
  * GRADE A REALTY - Use Properties Hook
  * React hook for fetching and managing property data
- * Phase 1 Implementation
+ * Phase 2 Implementation (Connected to API)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePropertyStore, usePropertyFilters } from '../store';
-import { mockDataService, type PropertySearchParams } from '../services/mockDataService';
+import { api } from '../services/api';
 import type { Property } from '../types';
+import type { GetPropertiesRequest } from '../types/api';
 
 interface UsePropertiesOptions {
     autoFetch?: boolean;
@@ -30,7 +31,7 @@ interface UsePropertiesReturn {
     error: string | null;
 
     // Actions
-    fetchProperties: (params?: Partial<PropertySearchParams>) => Promise<void>;
+    fetchProperties: (params?: Partial<GetPropertiesRequest>) => Promise<void>;
     fetchPropertyById: (id: string) => Promise<Property | null>;
     fetchFeatured: (limit?: number) => Promise<Property[]>;
     loadMore: () => Promise<void>;
@@ -42,86 +43,94 @@ export function useProperties(options: UsePropertiesOptions = {}): UseProperties
     const { autoFetch = true, ownerId } = options;
 
     const { filters } = usePropertyFilters();
-    const {
-        properties,
-        setProperties,
-        addProperties,
-        selectedProperty,
-        setSelectedProperty,
-        pagination,
-        setPagination,
-        isLoading,
-        setLoading,
-        error,
-        setError,
-    } = usePropertyStore();
+
+    // Store access
+    const properties = usePropertyStore(state => state.properties);
+    const totalCount = usePropertyStore(state => state.totalCount);
+    const currentPage = usePropertyStore(state => state.currentPage);
+    const totalPages = usePropertyStore(state => state.totalPages);
+    const pageSize = usePropertyStore(state => state.pageSize);
+    const selectedProperty = usePropertyStore(state => state.selectedProperty);
+    const isLoading = usePropertyStore(state => state.isLoading);
+    const error = usePropertyStore(state => state.error);
+
+    const setProperties = usePropertyStore(state => state.setProperties);
+    const appendProperties = usePropertyStore(state => state.appendProperties);
+    const setSelectedProperty = usePropertyStore(state => state.setSelectedProperty);
+    const setLoading = usePropertyStore(state => state.setLoading);
+    const setError = usePropertyStore(state => state.setError);
+    const setPage = usePropertyStore(state => state.setPage);
 
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     // Build search params from store filters
     const buildSearchParams = useCallback(
-        (overrides?: Partial<PropertySearchParams>): PropertySearchParams => ({
-            query: filters.query,
-            listingType: filters.listingType,
-            propertyTypes: filters.propertyTypes,
-            priceMin: filters.priceMin,
-            priceMax: filters.priceMax,
-            bedroomsMin: filters.bedroomsMin,
-            bathroomsMin: filters.bathroomsMin,
-            sqftMin: filters.sqftMin,
-            sqftMax: filters.sqftMax,
-            city: filters.city,
-            state: filters.state,
-            sortBy: filters.sortBy,
-            ownerId,
-            page: pagination.page,
-            limit: pagination.limit,
-            ...overrides,
-        }),
-        [filters, pagination, ownerId]
+        (overrides?: Partial<GetPropertiesRequest>): GetPropertiesRequest => {
+            // Base params
+            const params: GetPropertiesRequest = {
+                page: currentPage,
+                pageSize: pageSize,
+                ownerId,
+                ...overrides
+            };
+
+            // Map store filters to request params
+            if (filters.query) params.query = filters.query;
+            if (filters.listingType) params.listingType = filters.listingType;
+            if (filters.propertyType) params.propertyType = filters.propertyType;
+            if (filters.minPrice) params.minPrice = filters.minPrice;
+            if (filters.maxPrice) params.maxPrice = filters.maxPrice;
+            if (filters.minBedrooms) params.minBedrooms = filters.minBedrooms;
+            if (filters.minBathrooms) params.minBathrooms = filters.minBathrooms;
+            if (filters.minSquareFeet) params.minSquareFeet = filters.minSquareFeet;
+            if (filters.maxSquareFeet) params.maxSquareFeet = filters.maxSquareFeet;
+            if (filters.city) params.city = filters.city;
+            if (filters.state) params.state = filters.state;
+            if (filters.sortBy) params.sortBy = filters.sortBy;
+
+            return params;
+        },
+        [filters, currentPage, pageSize, ownerId]
     );
 
     // Fetch properties
     const fetchProperties = useCallback(
-        async (params?: Partial<PropertySearchParams>) => {
+        async (params?: Partial<GetPropertiesRequest>) => {
             setLoading(true);
             setError(null);
 
             try {
                 const searchParams = buildSearchParams({ ...params, page: 1 });
-                const result = await mockDataService.searchProperties(searchParams);
+                const response = await api.properties.list(searchParams);
 
-                setProperties(result.properties);
-                setPagination({
-                    page: result.page,
-                    total: result.total,
-                    totalPages: result.totalPages,
-                });
+                if (response.success && response.data) {
+                    setProperties(response.data);
+                } else {
+                    throw new Error(response.error?.message || 'Failed to fetch properties');
+                }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to fetch properties');
             } finally {
                 setLoading(false);
             }
         },
-        [buildSearchParams, setProperties, setPagination, setLoading, setError]
+        [buildSearchParams, setProperties, setLoading, setError]
     );
 
     // Load more (pagination)
     const loadMore = useCallback(async () => {
-        if (isLoadingMore || pagination.page >= pagination.totalPages) return;
+        if (isLoadingMore || currentPage >= totalPages) return;
 
         setIsLoadingMore(true);
 
         try {
-            const searchParams = buildSearchParams({ page: pagination.page + 1 });
-            const result = await mockDataService.searchProperties(searchParams);
+            const searchParams = buildSearchParams({ page: currentPage + 1 });
+            const response = await api.properties.list(searchParams);
 
-            addProperties(result.properties);
-            setPagination({
-                page: result.page,
-                total: result.total,
-                totalPages: result.totalPages,
-            });
+            if (response.success && response.data) {
+                appendProperties(response.data.data);
+                setPage(response.data.pagination.page);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load more properties');
         } finally {
@@ -129,10 +138,11 @@ export function useProperties(options: UsePropertiesOptions = {}): UseProperties
         }
     }, [
         isLoadingMore,
-        pagination,
+        currentPage,
+        totalPages,
         buildSearchParams,
-        addProperties,
-        setPagination,
+        appendProperties,
+        setPage,
         setError,
     ]);
 
@@ -145,11 +155,12 @@ export function useProperties(options: UsePropertiesOptions = {}): UseProperties
             setLoading(true);
 
             try {
-                const property = await mockDataService.getPropertyById(id);
-                if (property) {
-                    setSelectedProperty(property);
+                const response = await api.properties.get(id);
+                if (response.success && response.data) {
+                    setSelectedProperty(response.data);
+                    return response.data;
                 }
-                return property;
+                throw new Error(response.error?.message || 'Property not found');
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to fetch property');
                 return null;
@@ -164,7 +175,11 @@ export function useProperties(options: UsePropertiesOptions = {}): UseProperties
     const fetchFeatured = useCallback(
         async (limit?: number): Promise<Property[]> => {
             try {
-                return await mockDataService.getFeaturedProperties(limit);
+                const response = await api.properties.list({ pageSize: limit || 4, sortBy: 'date_desc' });
+                if (response.success && response.data) {
+                    return response.data.data;
+                }
+                return [];
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to fetch featured properties');
                 return [];
@@ -186,9 +201,9 @@ export function useProperties(options: UsePropertiesOptions = {}): UseProperties
     return {
         properties,
         selectedProperty,
-        total: pagination.total,
-        page: pagination.page,
-        totalPages: pagination.totalPages,
+        total: totalCount,
+        page: currentPage,
+        totalPages,
         isLoading,
         isLoadingMore,
         error,
@@ -205,14 +220,7 @@ export function useProperties(options: UsePropertiesOptions = {}): UseProperties
  * Hook for dashboard stats
  */
 export function useDashboardStats(ownerId?: string) {
-    const [stats, setStats] = useState<{
-        totalProperties: number;
-        activeListings: number;
-        totalViews: number;
-        monthlyIncome: number;
-        occupancyRate: number;
-        pendingApprovals: number;
-    } | null>(null);
+    const [stats, setStats] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -221,8 +229,12 @@ export function useDashboardStats(ownerId?: string) {
         setError(null);
 
         try {
-            const data = await mockDataService.getDashboardStats(ownerId);
-            setStats(data);
+            const response = await api.dashboard.getStats();
+            if (response.success && response.data) {
+                setStats(response.data);
+            } else {
+                throw new Error(response.error?.message || 'Failed to fetch stats');
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch stats');
         } finally {

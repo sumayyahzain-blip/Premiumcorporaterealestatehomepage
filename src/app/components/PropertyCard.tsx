@@ -41,7 +41,7 @@ export function PropertyCard({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group ${className}`}>
+    <div className={`bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col h-full ${className}`}>
       {/* Image */}
       <div className="relative aspect-[16/9] overflow-hidden bg-[var(--gray-100)]">
         {!imageLoaded && (
@@ -68,7 +68,7 @@ export function PropertyCard({
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-6 flex flex-col flex-1">
         {/* Price */}
         <div className="mb-3">
           <div className="text-2xl font-semibold text-[var(--gray-900)]">
@@ -147,12 +147,14 @@ export function PropertyCard({
         )}
 
         {/* CTA Button */}
-        <button
-          onClick={onClick}
-          className="w-full bg-[var(--emerald-700)] hover:bg-[var(--emerald-800)] text-white py-3 rounded-lg transition-all font-medium"
-        >
-          View Details
-        </button>
+        <div className="mt-auto pt-4">
+          <button
+            onClick={onClick}
+            className="w-full bg-[var(--emerald-700)] hover:bg-[var(--emerald-800)] text-white py-3 rounded-lg transition-all font-medium"
+          >
+            View Details
+          </button>
+        </div>
       </div>
     </div>
   );

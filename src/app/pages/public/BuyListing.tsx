@@ -1,78 +1,61 @@
-import React, { useState } from 'react';
-import { PropertyCard } from '../components/PropertyCard';
-import { Filter, ChevronDown, Map, List, Grid3X3 } from 'lucide-react';
 
-const buyProperties = [
-    {
-        id: 1,
-        image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-        price: '$725,000',
-        address: '1234 Oak Street, San Francisco, CA 94102',
-        beds: 3,
-        baths: 2,
-        sqft: 2100,
-        estRent: '$3,200',
-        capRate: '5.3%'
-    },
-    {
-        id: 2,
-        image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-        price: '$890,000',
-        address: '567 Pine Avenue, Seattle, WA 98101',
-        beds: 4,
-        baths: 3,
-        sqft: 2800,
-        estRent: '$4,100',
-        capRate: '5.5%'
-    },
-    {
-        id: 3,
-        image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800',
-        price: '$650,000',
-        address: '890 Maple Drive, Austin, TX 78701',
-        beds: 3,
-        baths: 2.5,
-        sqft: 2300,
-        estRent: '$2,900',
-        capRate: '5.4%'
-    },
-    {
-        id: 4,
-        image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-        price: '$1,150,000',
-        address: '234 Elm Street, Portland, OR 97201',
-        beds: 4,
-        baths: 3.5,
-        sqft: 3200,
-        estRent: '$5,200',
-        capRate: '5.4%'
-    },
-    {
-        id: 5,
-        image: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800',
-        price: '$825,000',
-        address: '456 Birch Lane, Denver, CO 80202',
-        beds: 3,
-        baths: 2.5,
-        sqft: 2500,
-        estRent: '$3,800',
-        capRate: '5.5%'
-    },
-    {
-        id: 6,
-        image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
-        price: '$975,000',
-        address: '789 Cedar Court, Boston, MA 02108',
-        beds: 4,
-        baths: 3,
-        sqft: 2900,
-        estRent: '$4,500',
-        capRate: '5.5%'
-    },
-];
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PropertyCard } from '../../components/PropertyCard';
+import { Filter, ChevronDown, Map, List, Grid3X3, Loader2 } from 'lucide-react';
+import { api } from '../../../services/api';
+import type { Property } from '../../../types';
 
 export default function BuyListing() {
+    const navigate = useNavigate();
     const [view, setView] = useState<'grid' | 'list'>('grid');
+    const [properties, setProperties] = useState<Property[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [totalItems, setTotalItems] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 9;
+
+    useEffect(() => {
+        let ismounted = true;
+
+        const fetchProperties = async () => {
+            setLoading(true);
+            try {
+                const response = await api.properties.list({
+                    listingType: 'sale',
+                    page: currentPage,
+                    pageSize: ITEMS_PER_PAGE
+                });
+
+                if (ismounted && response.success && response.data) {
+                    setProperties(response.data.data);
+                    setTotalItems(response.data.pagination.totalItems);
+                }
+            } catch (error) {
+                console.error('Failed to fetch properties', error);
+            } finally {
+                if (ismounted) setLoading(false);
+            }
+        };
+
+        fetchProperties();
+
+        return () => { ismounted = false; };
+    }, [currentPage]);
+
+    // Helpers
+    const getImage = (p: Property) => {
+        return (p as any).primaryImageUrl || (p.images && p.images?.[0]?.url) || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800';
+    };
+
+    const formatPrice = (price: number | null) => {
+        if (!price) return 'Price on Request';
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(price);
+    };
+
+    const getAddress = (p: Property) => {
+        return `${p.addressLine1 || ''}, ${p.city || ''}, ${p.state || ''} ${p.postalCode || ''}`;
+    };
 
     return (
         <div className="pt-24 pb-12 min-h-screen bg-gray-50">
@@ -81,10 +64,13 @@ export default function BuyListing() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Homes for Sale</h1>
-                        <p className="text-gray-500 mt-1">{buyProperties.length} properties available</p>
+                        <p className="text-gray-500 mt-1">
+                            {loading ? 'Loading...' : `${totalItems} properties available`}
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-3 mt-4 md:mt-0">
+                        {/* Sort/Layout controls remain static for now */}
                         <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
                             <span className="text-sm font-medium">Sort: Recommended</span>
                             <ChevronDown size={16} />
@@ -110,7 +96,7 @@ export default function BuyListing() {
                 </div>
 
                 <div className="flex gap-8">
-                    {/* Sidebar Filter */}
+                    {/* Sidebar Filter (Static for now) */}
                     <div className="hidden md:block w-72 flex-shrink-0">
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-28">
                             <div className="flex items-center justify-between mb-6">
@@ -173,25 +159,61 @@ export default function BuyListing() {
 
                     {/* Grid */}
                     <div className="flex-1">
-                        <div className={`grid ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-6`}>
-                            {buyProperties.map((property) => (
-                                <PropertyCard
-                                    key={property.id}
-                                    type="buy"
-                                    {...property}
-                                    className={view === 'list' ? 'flex flex-row' : ''}
-                                />
-                            ))}
-                        </div>
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center h-96 text-gray-400">
+                                <Loader2 size={48} className="animate-spin mb-4 text-emerald-500" />
+                                <p className="text-lg">Loading properties...</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`grid ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-6`}>
+                                    {properties.map((property) => (
+                                        <PropertyCard
+                                            key={property.id}
+                                            type="buy"
+                                            image={getImage(property)}
+                                            price={formatPrice(property.salePrice)}
+                                            address={getAddress(property)}
+                                            beds={property.bedrooms || 0}
+                                            baths={property.bathrooms || 0}
+                                            sqft={property.squareFeet || 0}
+                                            estRent={property.estimatedAnnualIncome ? formatPrice(property.estimatedAnnualIncome / 12) : undefined}
+                                            capRate={property.capRate ? `${property.capRate}%` : undefined}
+                                            className={view === 'list' ? 'flex flex-row' : ''}
+                                            onClick={() => navigate(`/property/${property.id}`)}
+                                        />
+                                    ))}
+                                    {properties.length === 0 && (
+                                        <div className="col-span-full py-12 text-center text-gray-500">
+                                            No properties found matching your criteria.
+                                        </div>
+                                    )}
+                                </div>
 
-                        {/* Pagination */}
-                        <div className="flex justify-center mt-12 gap-2">
-                            <button className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Previous</button>
-                            <button className="w-10 h-10 bg-emerald-600 text-white rounded-lg font-medium">1</button>
-                            <button className="w-10 h-10 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50">2</button>
-                            <button className="w-10 h-10 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50">3</button>
-                            <button className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Next</button>
-                        </div>
+                                {/* Pagination */}
+                                {totalItems > ITEMS_PER_PAGE && (
+                                    <div className="flex justify-center mt-12 gap-2">
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                                        >
+                                            Previous
+                                        </button>
+                                        <span className="flex items-center px-4 font-medium text-gray-900">
+                                            Page {currentPage}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentPage(p => p + 1)}
+                                            disabled={currentPage * ITEMS_PER_PAGE >= totalItems}
+                                            className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
