@@ -87,7 +87,6 @@ export default function PropertyDetail() {
     };
 
     const getImages = (p: Property) => {
-        // Mock fallback images if none exist
         const fallbackImages = [
             'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=1600',
             'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
@@ -96,20 +95,19 @@ export default function PropertyDetail() {
             'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800',
         ];
 
-        // If property has images (from API), use them. 
-        // Note: Property type in API mock currently has 'images' property in interface but mock data service didn't populate it fully in all cases.
-        // We'll trust the interface.
-        if (p.images && p.images.length > 0) {
-            return p.images.map(img => img.url);
+        let validImages = p.images?.map(img => img.url) || [];
+
+        // Handle legacy primaryImageUrl
+        if (validImages.length === 0 && (p as any).primaryImageUrl) {
+            validImages = [(p as any).primaryImageUrl];
         }
 
-        // If primaryImageUrl exists (legacy mock), put it first
-        const primary = (p as any).primaryImageUrl;
-        if (primary) {
-            return [primary, ...fallbackImages.slice(1)];
+        // Pad with fallbacks if needed to ensure we have enough for the grid (5 images)
+        if (validImages.length < 5) {
+            return [...validImages, ...fallbackImages.slice(0, 5 - validImages.length)];
         }
 
-        return fallbackImages;
+        return validImages;
     };
 
     if (loading) {
@@ -142,6 +140,17 @@ export default function PropertyDetail() {
     }
 
     const images = getImages(property);
+
+    // Mock Amenities and Schools if not present
+    const amenities = property.amenities && property.amenities.length > 0 ? property.amenities : [
+        'Central Air', 'Hardwood Floors', 'Dishwasher', 'Washer/Dryer', 'Garage Parking', 'Swimming Pool', 'Smart Home', 'Fireplace'
+    ];
+
+    const schools = [
+        { name: 'Lincoln Elementary', type: 'Public', grade: 'K-5', rating: 9 },
+        { name: 'Washington Middle', type: 'Public', grade: '6-8', rating: 8 },
+        { name: 'Roosevelt High', type: 'Public', grade: '9-12', rating: 9 },
+    ];
 
     return (
         <div className="pt-24 pb-12 min-h-screen bg-gray-50">
@@ -191,32 +200,39 @@ export default function PropertyDetail() {
                         </div>
                     </div>
 
-                    {/* Gallery Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[500px]">
-                        {/* Main Large Image */}
-                        <div className="md:col-span-2 md:row-span-2 relative rounded-2xl overflow-hidden group">
+                    {/* World Class Bento Grid Gallery */}
+                    <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[550px] rounded-[2rem] overflow-hidden">
+                        {/* Main Hero Image */}
+                        <div
+                            onClick={() => console.log("Open Full Screen Gallery")}
+                            className="col-span-2 row-span-2 relative group cursor-pointer"
+                        >
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
                             <img
-                                src={images[activeImage]}
+                                src={images[0]}
                                 alt={property.title}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                             />
                         </div>
-                        {/* Side Images */}
+
+                        {/* Side Quads */}
                         {images.slice(1, 5).map((img, idx) => (
                             <div
                                 key={idx}
-                                onClick={() => setActiveImage(idx + 1)}
-                                className="relative rounded-2xl overflow-hidden group hidden md:block cursor-pointer"
+                                onClick={() => console.log("Open Full Screen Gallery")}
+                                className="relative group cursor-pointer overflow-hidden"
                             >
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
                                 <img
                                     src={img}
-                                    alt={`${property.title} - Image ${idx + 2}`}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                    alt={`View ${idx + 2}`}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
-                                {idx === 3 && images.length > 5 && (
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center hover:bg-black/50 transition-colors">
-                                        <span className="text-white font-semibold text-lg">+{images.length - 5} Photos</span>
-                                    </div>
+                                {idx === 3 && (
+                                    <button className="absolute bottom-4 right-4 z-20 bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-lg text-sm font-semibold shadow-lg transition-all flex items-center gap-2">
+                                        <Maximize size={16} />
+                                        Show all photos
+                                    </button>
                                 )}
                             </div>
                         ))}
@@ -256,8 +272,29 @@ export default function PropertyDetail() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Content */}
+                    {/* Left Content (66%) */}
                     <div className="lg:col-span-2 space-y-8">
+
+                        {/* About Section */}
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Property</h2>
+                            <div className="prose prose-slate max-w-none text-gray-600 leading-relaxed">
+                                <p>{property.description}</p>
+                            </div>
+                        </div>
+
+                        {/* Amenities Section */}
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">Amenities</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
+                                {amenities.map((amenity, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 text-gray-700">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        <span>{amenity}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* Investment Analysis */}
                         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
@@ -286,77 +323,94 @@ export default function PropertyDetail() {
                             </div>
                         </div>
 
-                        {/* About Section */}
+                        {/* Schools Section (Mock) */}
                         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Property</h2>
-                            <div className="prose prose-slate max-w-none text-gray-600">
-                                <p>{property.description}</p>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">Nearby Schools</h2>
+                            <div className="space-y-4">
+                                {schools.map((school, i) => (
+                                    <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                        <div>
+                                            <div className="font-bold text-gray-900">{school.name}</div>
+                                            <div className="text-sm text-gray-500">{school.type} • Grades {school.grade}</div>
+                                        </div>
+                                        <div className="bg-white px-3 py-1 rounded-lg border border-gray-200 font-bold text-gray-900 shadow-sm">
+                                            {school.rating}/10
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
                         {/* Map Section */}
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4 mt-8">Location</h2>
-                        <PropertyMap
-                            latitude={property.latitude}
-                            longitude={property.longitude}
-                            address={`${property.addressLine1 || ''}, ${property.city || ''}`}
-                            price={property.listingType === 'rent' ? property.rentPrice : property.salePrice}
-                            status={property.status}
-                        />
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Location</h2>
+                            <PropertyMap
+                                latitude={property.latitude}
+                                longitude={property.longitude}
+                                address={`${property.addressLine1 || ''}, ${property.city || ''}`}
+                                price={property.listingType === 'rent' ? property.rentPrice : property.salePrice}
+                                status={property.status}
+                            />
+                        </div>
                     </div>
 
-                    {/* Right Sidebar - Contact Form */}
+                    {/* Right Sidebar - Sticky Agent Card (33%) */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 sticky top-28">
-                            <h3 className="text-xl font-bold text-gray-900 mb-6">Schedule a Viewing</h3>
+                        <div className="bg-white rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 sticky top-24">
 
-                            <form onSubmit={handleScheduleViewing} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                    <input type="text" placeholder="Your name" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                            {/* Agent Header */}
+                            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                                <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden relative">
+                                    <img
+                                        src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200&h=200"
+                                        alt="Agent Sarah"
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                    <input type="email" placeholder="your@email.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                    <input type="tel" placeholder="(555) 123-4567" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Date</label>
-                                    <div className="relative">
-                                        <input type="date" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-500" />
-                                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                                    <h3 className="font-bold text-lg text-gray-900">Sarah Johnson</h3>
+                                    <p className="text-emerald-600 font-medium text-sm">Premier Agent</p>
+                                    <div className="flex items-center gap-1 mt-1">
+                                        <div className="flex text-amber-400 text-xs">★★★★★</div>
+                                        <span className="text-xs text-gray-500">(128 reviews)</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Message (Optional)</label>
-                                    <textarea rows={4} placeholder="Tell us about your interests..." className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"></textarea>
+                            {/* Schedule Call to Action */}
+                            <div className="mb-6">
+                                <h4 className="font-semibold text-gray-900 mb-3">Schedule a Tour</h4>
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                    {['Today', 'Tomorrow', 'Weekend'].map((day) => (
+                                        <button key={day} className="px-2 py-2 text-sm border border-gray-200 rounded-lg hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50 transition-all text-center">
+                                            {day}
+                                        </button>
+                                    ))}
                                 </div>
+                                <div className="relative">
+                                    <input
+                                        type="date"
+                                        className="w-full px-4 py-3 bg-gray-50 rounded-xl border-0 text-gray-900 focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                            </div>
 
-                                <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30">
-                                    Schedule Viewing
+                            {/* Primary Actions */}
+                            <div className="space-y-3">
+                                <button className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                                    Request Info
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={handleContactAgent}
-                                    className="w-full bg-white border border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-bold py-3.5 rounded-xl transition-colors"
-                                >
-                                    Contact Agent
+                                <button className="w-full bg-white border border-slate-900 text-slate-900 hover:bg-gray-50 font-bold py-3.5 rounded-xl transition-all">
+                                    Message Agent
                                 </button>
-                            </form>
+                            </div>
 
-                            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-3">
-                                <div className="w-12 h-12 bg-emerald-100 rounded-full overflow-hidden flex items-center justify-center">
-                                    <span className="text-emerald-600 font-bold text-lg">SJ</span>
-                                </div>
-                                <div>
-                                    <div className="font-bold text-gray-900">Sarah Johnson</div>
-                                    <div className="text-sm text-gray-500">Licensed Agent</div>
-                                </div>
+                            {/* Micro-text security */}
+                            <div className="mt-4 text-center">
+                                <p className="text-xs text-gray-400">
+                                    By clicking request, you agree to our Terms.
+                                </p>
                             </div>
                         </div>
                     </div>

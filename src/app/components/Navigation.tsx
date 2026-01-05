@@ -1,99 +1,67 @@
-import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
-interface NavigationProps {
-  className?: string;
-}
+const Navbar = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
 
-export function Navigation({ className = '' }: NavigationProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // The "Scroll Listener" Engine
+  useEffect(() => {
+    const handleScroll = () => {
+      // Switch to dark mode after scrolling 10px
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <nav className={`sticky top-0 z-50 bg-white border-b border-[var(--gray-200)] ${className}`}>
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-12">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <span className="text-2xl font-semibold text-[var(--emerald-800)] tracking-tight">
-              Estate
-            </span>
+    <nav
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${isScrolled ? 'bg-[#0f172a] shadow-lg py-4' : 'bg-transparent py-6'
+        }`}
+    >
+      <div className="container mx-auto px-6 flex justify-between items-center">
+        {/* Logo Section */}
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="bg-yellow-500 text-black font-bold text-xl w-10 h-10 flex items-center justify-center rounded-lg group-hover:scale-105 transition-transform">
+            G
           </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-8">
-            <a href="#buy" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors">
-              Buy
-            </a>
-            <a href="#rent" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors">
-              Rent
-            </a>
-            <a href="#sell" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors">
-              Sell
-            </a>
-            <a href="#manage" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors">
-              Manage
-            </a>
-            <a href="#invest" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors">
-              Invest
-            </a>
-            <a href="#learn" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors">
-              Learn
-            </a>
+          <div className="flex flex-col">
+            <span className="text-white font-bold text-lg leading-tight tracking-wide">GRADE A</span>
+            <span className="text-yellow-500 font-bold text-xs tracking-[0.2em]">REALTY</span>
           </div>
+        </Link>
 
-          {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center space-x-4">
-            <button className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors px-4 py-2">
-              Login
-            </button>
-            <button className="bg-[var(--gold-500)] hover:bg-[var(--gold-600)] text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md">
-              Get Started
-            </button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="lg:hidden p-2 text-[var(--gray-700)]"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center space-x-8">
+          <Link to="/" className="text-white hover:text-yellow-500 font-medium transition-colors">HOME</Link>
+          <Link to="/properties" state={{ globalSearch: 'Buy' }} className="text-white hover:text-yellow-500 font-medium transition-colors">BUY</Link>
+          <Link to="/properties" state={{ globalSearch: 'Rent' }} className="text-white hover:text-yellow-500 font-medium transition-colors">RENT</Link>
+          <Link to="/sell" className="text-white hover:text-yellow-500 font-medium transition-colors">SELL</Link>
         </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-[var(--gray-200)]">
-            <div className="flex flex-col space-y-4">
-              <a href="#buy" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2">
-                Buy
-              </a>
-              <a href="#rent" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2">
-                Rent
-              </a>
-              <a href="#sell" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2">
-                Sell
-              </a>
-              <a href="#manage" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2">
-                Manage
-              </a>
-              <a href="#invest" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2">
-                Invest
-              </a>
-              <a href="#learn" className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2">
-                Learn
-              </a>
-              <div className="flex flex-col space-y-3 pt-4">
-                <button className="text-[var(--gray-700)] hover:text-[var(--emerald-800)] transition-colors py-2 text-left">
-                  Login
-                </button>
-                <button className="bg-[var(--gold-500)] hover:bg-[var(--gold-600)] text-white px-6 py-2.5 rounded-lg transition-all">
-                  Get Started
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div className="hidden md:flex items-center gap-4">
+          <Link to="/login" className="text-white hover:text-yellow-500 font-medium transition">
+            Sign In
+          </Link>
+          <Link
+            to="/register"
+            className={`px-5 py-2 rounded-full font-medium transition-all ${isScrolled
+              ? 'bg-yellow-500 text-black hover:bg-yellow-400'
+              : 'bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900'
+              }`}
+          >
+            Register
+          </Link>
+        </div>
       </div>
     </nav>
   );
-}
+};
+
+export default Navbar;

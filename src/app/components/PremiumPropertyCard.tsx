@@ -15,6 +15,7 @@ import {
     Building2,
     Eye,
     Calendar,
+    CheckCircle,
 } from 'lucide-react';
 import { formatCurrency, formatSquareFeet, formatRelativeTime } from '../../utils';
 import { showSuccessToast } from '../../store';
@@ -87,21 +88,40 @@ export default function PremiumPropertyCard({
     const getStatusBadge = () => {
         if (!status) return null;
 
-        const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-            active: { bg: 'bg-green-500/20', text: 'text-green-400', label: 'Active' },
-            pending_approval: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Pending' },
-            under_contract: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Under Contract' },
-            sold: { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Sold' },
-            rented: { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Rented' },
-            draft: { bg: 'bg-gray-500/20', text: 'text-gray-400', label: 'Draft' },
+        const statusConfig: Record<string, { bg: string; text: string; label: string; icon?: React.ReactNode }> = {
+            active: {
+                bg: 'bg-green-500',
+                text: 'text-white',
+                label: 'ACTIVE',
+                icon: (
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="w-3.5 h-3.5"
+                    >
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                )
+            },
+            pending_approval: { bg: 'bg-amber-500', text: 'text-white', label: 'PENDING' },
+            under_contract: { bg: 'bg-blue-500', text: 'text-white', label: 'CONTRACT' },
+            sold: { bg: 'bg-purple-500', text: 'text-white', label: 'SOLD' },
+            rented: { bg: 'bg-indigo-500', text: 'text-white', label: 'RENTED' },
+            draft: { bg: 'bg-gray-500', text: 'text-white', label: 'DRAFT' },
         };
 
         const config = statusConfig[status] || statusConfig.draft;
 
         return (
-            <span className={`px-2 py-1 rounded-md text-xs font-medium ${config.bg} ${config.text}`}>
-                {config.label}
-            </span>
+            <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm ${config.bg} ${config.text}`}>
+                {config.icon}
+                <span className="text-xs font-bold tracking-wide leading-none pt-0.5">{config.label}</span>
+            </div>
         );
     };
 
@@ -134,8 +154,8 @@ export default function PremiumPropertyCard({
                         <div className="flex gap-2">
                             {/* Listing Type Badge */}
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${listingType === 'rent'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-amber-500 text-white'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-amber-500 text-white'
                                 }`}>
                                 {listingType === 'rent' ? 'For Rent' : 'For Sale'}
                             </span>
@@ -146,8 +166,8 @@ export default function PremiumPropertyCard({
                         <button
                             onClick={handleFavoriteClick}
                             className={`p-2 rounded-full backdrop-blur-sm transition-all ${isFavorite
-                                    ? 'bg-red-500 text-white'
-                                    : 'bg-white/20 text-white hover:bg-white/40'
+                                ? 'bg-red-500 text-white'
+                                : 'bg-white/20 text-white hover:bg-white/40'
                                 }`}
                         >
                             <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
@@ -295,8 +315,8 @@ export default function PremiumPropertyCard({
                 <button
                     onClick={handleFavoriteClick}
                     className={`self-start p-2 rounded-lg transition-all ${isFavorite
-                            ? 'bg-red-500/20 text-red-400'
-                            : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                        ? 'bg-red-500/20 text-red-400'
+                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
                         }`}
                 >
                     <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />

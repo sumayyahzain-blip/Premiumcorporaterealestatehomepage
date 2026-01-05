@@ -32,25 +32,29 @@ export default function TeamSection() {
         <section id="team" className="py-24 bg-white overflow-hidden">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="text-center mb-16">
-                    <span className="inline-block bg-amber-100 text-amber-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Our Team</span>
-                    <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Meet Our Experts</h2>
-                    <p className="text-xl text-slate-600 max-w-2xl mx-auto">Dedicated professionals committed to finding your perfect property</p>
+                    {/* Badge Removed per instructions */}
+                    <h2 className="text-4xl md:text-5xl font-serif font-bold text-slate-900 mb-4">Meet Our Experts</h2>
+                    <p className="text-xl text-slate-600 max-w-2xl mx-auto font-light">Dedicated professionals committed to excellence.</p>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
                     {team.map((member, index) => (
-                        <div key={index} className="group">
-                            <div className="relative overflow-hidden rounded-3xl mb-6">
-                                <img src={member.image} alt={member.name} className="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-700" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500">
-                                    <div className="absolute bottom-6 left-6 right-6">
-                                        <p className="text-white/80 text-sm">{member.bio}</p>
-                                    </div>
-                                </div>
+                        <div key={index} className="group cursor-pointer">
+                            {/* Strict Framing Aspect Ratio 4/5 */}
+                            <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-gray-100 mb-6 shadow-sm">
+                                <img
+                                    src={member.image}
+                                    alt={member.name}
+                                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                                // Removed grayscale filter - Full Natural Color
+                                />
+                                {/* removed overlay since we want clean photo look */}
                             </div>
+
                             <div className="text-center">
-                                <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-amber-600 transition-colors">{member.name}</h3>
-                                <p className="text-amber-600 font-medium">{member.role}</p>
+                                {/* Typography Update */}
+                                <h3 className="font-serif text-2xl text-slate-900 mb-2">{member.name}</h3>
+                                <p className="font-sans text-sm uppercase tracking-widest text-[#D4AF37] font-semibold">{member.role}</p>
                             </div>
                         </div>
                     ))}

@@ -1,47 +1,114 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PropertyCard } from '../../components/PropertyCard';
-import { Filter, ChevronDown, Map, List, Grid3X3, Loader2 } from 'lucide-react';
+import { ChevronDown, Search, Grid3X3, List, Loader2, AlertCircle } from 'lucide-react';
 import { api } from '../../../services/api';
 import type { Property } from '../../../types';
+import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 
 export default function BuyListing() {
     const navigate = useNavigate();
     const [view, setView] = useState<'grid' | 'list'>('grid');
+
+    // Data State
     const [properties, setProperties] = useState<Property[]>([]);
+
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 9;
+
+    // Loading & Error States
     const [loading, setLoading] = useState(true);
-    const [totalItems, setTotalItems] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 9;
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        let ismounted = true;
+    // Filter Logic State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterType, setFilterType] = useState('All Types');
 
-        const fetchProperties = async () => {
-            setLoading(true);
-            try {
-                const response = await api.properties.list({
-                    listingType: 'sale',
-                    page: currentPage,
-                    pageSize: ITEMS_PER_PAGE
-                });
+    // Applied Filters (to trigger search only on button click or explicit action if desired, 
+    // but typically infinite scroll works best with a single 'active' filter state used by the fetcher)
+    const [activeQuery, setActiveQuery] = useState('');
+    const [activeType, setActiveType] = useState('All Types');
 
-                if (ismounted && response.success && response.data) {
-                    setProperties(response.data.data);
-                    setTotalItems(response.data.pagination.totalItems);
-                }
-            } catch (error) {
-                console.error('Failed to fetch properties', error);
-            } finally {
-                if (ismounted) setLoading(false);
+    const fetchProperties = useCallback(async (pageNum: number, isNewSearch: boolean = false) => {
+        setLoading(true);
+        if (isNewSearch) {
+            setError(null);
+        }
+
+        try {
+            // Map UI type to API propertyType
+            let propTypeFilter: string[] | undefined = undefined;
+            if (activeType !== 'All Types') {
+                const map: Record<string, string> = { 'House': 'single_family', 'Condo': 'condo', 'Land': 'land' };
+                if (map[activeType]) propTypeFilter = [map[activeType]];
             }
-        };
 
-        fetchProperties();
+            const response = await api.properties.list({
+                listingType: 'sale',
+                page: pageNum,
+                pageSize: pageSize,
+                query: activeQuery || undefined,
+                propertyType: propTypeFilter as any // Cast because mock client types might be strict
+            });
 
-        return () => { ismounted = false; };
-    }, [currentPage]);
+            if (response.success && response.data) {
+                const newItems = response.data.data;
+                const pagination = response.data.pagination;
+
+                if (isNewSearch) {
+                    setProperties(newItems);
+                } else {
+                    setProperties(prev => [...prev, ...newItems]);
+                }
+
+                setHasMore(pagination.hasNext);
+            } else {
+                setError(response.error?.message || 'Failed to load properties');
+            }
+        } catch (err) {
+            console.error('Failed to fetch properties', err);
+            setError('An unexpected error occurred while loading properties.');
+        } finally {
+            setLoading(false);
+        }
+    }, [activeQuery, activeType]);
+
+    // Initial Load & On Active Filter Change
+    useEffect(() => {
+        setPage(1);
+        fetchProperties(1, true);
+    }, [activeQuery, activeType, fetchProperties]);
+
+    // Infinite Scroll Callback
+    const loadMore = () => {
+        if (!hasMore || loading) return;
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchProperties(nextPage, false);
+    };
+
+    const scrollRef = useInfiniteScroll(loadMore, hasMore, loading);
+
+    // Handlers
+    const handleSearch = () => {
+        // Trigger fetch by updating active filters
+        setActiveQuery(searchQuery);
+        setActiveType(filterType);
+        // Page reset is handled in the useEffect
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleSearch();
+    };
+
+    const resetFilters = () => {
+        setSearchQuery('');
+        setFilterType('All Types');
+        setActiveQuery('');
+        setActiveType('All Types');
+    };
 
     // Helpers
     const getImage = (p: Property) => {
@@ -57,25 +124,82 @@ export default function BuyListing() {
         return `${p.addressLine1 || ''}, ${p.city || ''}, ${p.state || ''} ${p.postalCode || ''}`;
     };
 
-    return (
-        <div className="pt-24 pb-12 min-h-screen bg-gray-50">
-            <div className="max-w-[1440px] mx-auto px-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Homes for Sale</h1>
-                        <p className="text-gray-500 mt-1">
-                            {loading ? 'Loading...' : `${totalItems} properties available`}
-                        </p>
-                    </div>
+    const getStatusColor = (statusVal: string) => {
+        const s = statusVal?.toLowerCase() || '';
+        if (s === 'active' || s === 'for sale' || s === 'for rent') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        if (s === 'sold' || s === 'rented') return 'bg-red-100 text-red-800 border-red-200';
+        if (s === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    };
 
-                    <div className="flex items-center gap-3 mt-4 md:mt-0">
-                        {/* Sort/Layout controls remain static for now */}
-                        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
-                            <span className="text-sm font-medium">Sort: Recommended</span>
-                            <ChevronDown size={16} />
+    const formatStatus = (s: string) => {
+        if (!s) return '';
+        return s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    return (
+        <div className="pt-24 pb-12 min-h-screen bg-gray-50 font-sans">
+            <div className="max-w-[1440px] mx-auto px-6">
+                {/* Header & Hero Search */}
+                <div className="flex flex-col items-center justify-center mb-10">
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 text-center">Find your next dream home</h1>
+
+                    {/* Zillow-Style Search Pill */}
+                    <div className="w-full max-w-4xl bg-white rounded-full shadow-lg border border-gray-200 p-2 flex items-center transition-shadow hover:shadow-xl">
+
+                        {/* Location Input Section */}
+                        <div className="flex-1 px-6 border-r border-gray-200">
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Location</label>
+                            <input
+                                type="text"
+                                placeholder="City, Zip, or Address"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className="w-full text-gray-900 placeholder-gray-400 font-medium focus:outline-none bg-transparent text-lg truncate"
+                            />
+                        </div>
+
+                        {/* Type Dropdown Section */}
+                        <div className="w-48 px-6 relative">
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Type</label>
+                            <div className="relative">
+                                <select
+                                    value={filterType}
+                                    onChange={(e) => setFilterType(e.target.value)}
+                                    className="w-full text-gray-900 font-medium appearance-none bg-transparent focus:outline-none cursor-pointer text-lg pr-8"
+                                >
+                                    <option value="All Types">All Types</option>
+                                    <option value="House">House</option>
+                                    <option value="Condo">Condo</option>
+                                    <option value="Land">Land</option>
+                                </select>
+                                <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                            </div>
+                        </div>
+
+                        {/* Active Search Button */}
+                        <button
+                            type="button"
+                            onClick={handleSearch}
+                            className="bg-blue-900 text-white p-3 rounded-full hover:bg-blue-800 transition shadow-lg cursor-pointer flex-shrink-0"
+                            aria-label="Search"
+                        >
+                            <Search size={24} strokeWidth={2.5} />
                         </button>
-                        <div className="flex bg-white border border-gray-200 rounded-lg p-1">
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="flex flex-col gap-8">
+
+                    {/* Results Info & View Toggle */}
+                    <div className="flex items-center justify-between">
+                        <p className="text-gray-500 font-medium">
+                            {properties.length} results
+                        </p>
+
+                        <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                             <button
                                 onClick={() => setView('grid')}
                                 className={`p-2 rounded-md transition-all ${view === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
@@ -89,127 +213,86 @@ export default function BuyListing() {
                                 <List size={20} />
                             </button>
                         </div>
-                        <button className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 md:hidden">
-                            <Filter size={20} />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex gap-8">
-                    {/* Sidebar Filter (Static for now) */}
-                    <div className="hidden md:block w-72 flex-shrink-0">
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-28">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-bold text-gray-900">Filters</h3>
-                                <button className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">Clear All</button>
-                            </div>
-
-                            {/* Location */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
-                                <div className="relative">
-                                    <Map size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="City, State, or ZIP"
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Price Range */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Price Range</label>
-                                <div className="flex gap-2">
-                                    <input type="text" placeholder="Min" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500" />
-                                    <input type="text" placeholder="Max" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500" />
-                                </div>
-                            </div>
-
-                            {/* Bedrooms */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Bedrooms</label>
-                                <div className="flex gap-2">
-                                    {['Any', '1+', '2+', '3+', '4+'].map((opt, i) => (
-                                        <button key={i} className={`flex-1 py-1.5 text-sm border rounded-md hover:border-emerald-500 hover:text-emerald-600 ${i === 2 ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-medium' : 'border-gray-200 text-gray-600'}`}>
-                                            {opt}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Property Type */}
-                            <div className="mb-8">
-                                <label className="block text-sm font-semibold text-gray-700 mb-3">Property Type</label>
-                                <div className="space-y-2.5">
-                                    {['Single Family', 'Condo', 'Townhouse', 'Multi-family'].map((type) => (
-                                        <label key={type} className="flex items-center gap-2 cursor-pointer group">
-                                            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-                                            <span className="text-gray-600 group-hover:text-gray-900">{type}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition-colors">
-                                Apply Filters
-                            </button>
-                        </div>
                     </div>
 
-                    {/* Grid */}
-                    <div className="flex-1">
-                        {loading ? (
+
+                    {/* Results Grid */}
+                    <div className="min-h-[500px]">
+                        {loading && properties.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-96 text-gray-400">
-                                <Loader2 size={48} className="animate-spin mb-4 text-emerald-500" />
+                                <Loader2 size={48} className="animate-spin mb-4 text-blue-900" />
                                 <p className="text-lg">Loading properties...</p>
+                            </div>
+                        ) : error && properties.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-96 text-gray-500 bg-white rounded-xl border border-gray-200">
+                                <AlertCircle size={48} className="mb-4 text-red-500" />
+                                <h3 className="text-xl font-semibold text-gray-900 mb-2">Failed to load properties</h3>
+                                <p className="max-w-md text-center mb-6">{error}</p>
+                                <button
+                                    onClick={() => fetchProperties(1, true)}
+                                    className="px-6 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors"
+                                >
+                                    Retry
+                                </button>
                             </div>
                         ) : (
                             <>
-                                <div className={`grid ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-6`}>
+                                <div className={`grid ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-8`}>
                                     {properties.map((property) => (
-                                        <PropertyCard
-                                            key={property.id}
-                                            type="buy"
-                                            image={getImage(property)}
-                                            price={formatPrice(property.salePrice)}
-                                            address={getAddress(property)}
-                                            beds={property.bedrooms || 0}
-                                            baths={property.bathrooms || 0}
-                                            sqft={property.squareFeet || 0}
-                                            estRent={property.estimatedAnnualIncome ? formatPrice(property.estimatedAnnualIncome / 12) : undefined}
-                                            capRate={property.capRate ? `${property.capRate}%` : undefined}
-                                            className={view === 'list' ? 'flex flex-row' : ''}
-                                            onClick={() => navigate(`/property/${property.id}`)}
-                                        />
-                                    ))}
-                                    {properties.length === 0 && (
-                                        <div className="col-span-full py-12 text-center text-gray-500">
-                                            No properties found matching your criteria.
+                                        <div key={property.id} className="relative group">
+
+
+                                            <PropertyCard
+                                                type="buy"
+                                                image={getImage(property)}
+                                                price={formatPrice(property.salePrice)}
+                                                address={getAddress(property)}
+                                                beds={property.bedrooms || 0}
+                                                baths={property.bathrooms || 0}
+                                                sqft={property.squareFeet || 0}
+                                                estRent={property.estimatedAnnualIncome ? formatPrice(property.estimatedAnnualIncome / 12) : undefined}
+                                                capRate={property.capRate ? `${property.capRate}%` : undefined}
+                                                className={view === 'list' ? 'flex flex-row' : ''}
+                                                onClick={() => navigate(`/property/${property.id}`)}
+                                                id={property.id}
+                                                data={property}
+                                            />
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
 
-                                {/* Pagination */}
-                                {totalItems > ITEMS_PER_PAGE && (
-                                    <div className="flex justify-center mt-12 gap-2">
+                                {/* Smart Empty State (Airbnb Standard) */}
+                                {properties.length === 0 && !loading && (
+                                    <div className="col-span-full py-24 text-center text-gray-500 flex flex-col items-center justify-center">
+                                        <div className="mb-6">
+                                            <Search size={48} className="text-gray-300 mx-auto" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                                            {activeQuery ? `No homes found in "${activeQuery}"` : 'No homes found'}
+                                        </h3>
+                                        <p className="max-w-sm mx-auto text-gray-500 mb-8">
+                                            We couldn't find any properties matching your search. Try checking your spelling or broadening your search.
+                                        </p>
                                         <button
-                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            disabled={currentPage === 1}
-                                            className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                                            onClick={resetFilters}
+                                            className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
                                         >
-                                            Previous
+                                            Clear Filters & Show All
                                         </button>
-                                        <span className="flex items-center px-4 font-medium text-gray-900">
-                                            Page {currentPage}
-                                        </span>
-                                        <button
-                                            onClick={() => setCurrentPage(p => p + 1)}
-                                            disabled={currentPage * ITEMS_PER_PAGE >= totalItems}
-                                            className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                                        >
-                                            Next
-                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Loading Spinner / Infinite Scroll Trigger */}
+                                {hasMore && (
+                                    <div ref={scrollRef} className="py-12 flex justify-center">
+                                        {loading ? (
+                                            <div className="flex items-center gap-2 text-gray-500">
+                                                <Loader2 size={24} className="animate-spin text-blue-900" />
+                                                <span>Loading more homes...</span>
+                                            </div>
+                                        ) : (
+                                            <div className="h-8" />
+                                        )}
                                     </div>
                                 )}
                             </>

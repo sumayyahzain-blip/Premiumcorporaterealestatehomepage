@@ -130,7 +130,7 @@ export default function RentListing() {
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Bedrooms</label>
                                 <div className="flex gap-2">
                                     {['1', '2', '3', '4+'].map((opt, i) => (
-                                        <button key={i} className={`flex-1 py-1.5 text-sm border rounded-md hover:border-emerald-500 hover:text-emerald-600 ${i === 0 ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-medium' : 'border-gray-200 text-gray-600'}`}>
+                                        <button key={i} className={`flex-1 py-1.5 text-sm border rounded-md transition-colors ${i === 0 ? 'bg-[#0f172a] border-[#0f172a] text-[#D4AF37] font-bold' : 'border-gray-200 text-gray-600 hover:border-[#0f172a] hover:text-[#0f172a]'}`}>
                                             {opt}
                                         </button>
                                     ))}
@@ -163,7 +163,7 @@ export default function RentListing() {
                                 </div>
                             </div>
 
-                            <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                            <button className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white font-semibold py-3 rounded-lg transition-colors shadow-lg">
                                 Apply Filters
                             </button>
                         </div>

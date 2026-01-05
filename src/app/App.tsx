@@ -1,12 +1,13 @@
 import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Header from './components/Header';
+import SellerDashboard from './pages/customer/SellerDashboard';
 import Homepage from './pages/public/Homepage';
 import BuyListing from './pages/public/BuyListing';
 import RentListing from './pages/public/RentListing';
 import PropertyDetail from './pages/public/PropertyDetail';
 import OwnerDashboard from './pages/customer/OwnerDashboard';
-import Pricing from './pages/public/Pricing';
+import SellLandingPage from './pages/public/Sell';
 import CreatePropertyPage from './pages/customer/CreatePropertyPage';
 import MyPropertiesPage from './pages/customer/MyPropertiesPage';
 
@@ -23,6 +24,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { ToastContainer } from './components/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AdminLayout, RoleBasedRoute } from './components/RoleLayouts';
+
+// Comparison Feature
+import { ComparisonProvider } from './context/ComparisonContext';
+import CompareDock from './components/CompareDock';
 
 // Layout component to conditionally show header
 function Layout({ children }: { children: React.ReactNode }) {
@@ -49,168 +54,183 @@ export default function App() {
       }}
     >
       <AuthProvider>
-        <Layout>
-          <Routes>
-            {/* ============================================================ */}
-            {/* PUBLIC ROUTES - User Site (Renters/Buyers) */}
-            {/* ============================================================ */}
-            <Route path="/" element={<Homepage />} />
-            <Route path="/buy" element={<BuyListing />} />
-            <Route path="/rent" element={<RentListing />} />
-            <Route path="/property/:id" element={<PropertyDetail />} />
-            <Route path="/pricing" element={<Pricing />} />
+        {/* Comparison Provider wraps the app to provide global access to comparison state */}
+        <ComparisonProvider>
+          <Layout>
+            <Routes>
+              {/* ============================================================ */}
+              {/* PUBLIC ROUTES - User Site (Renters/Buyers) */}
+              {/* ============================================================ */}
+              <Route path="/" element={<Homepage />} />
+              <Route path="/buy" element={<BuyListing />} />
+              <Route path="/rent" element={<RentListing />} />
+              <Route path="/property/:id" element={<PropertyDetail />} />
+              <Route path="/sell" element={<SellLandingPage />} />
 
-            {/* ============================================================ */}
-            {/* AUTH ROUTES */}
-            {/* ============================================================ */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              {/* ============================================================ */}
+              {/* AUTH ROUTES */}
+              {/* ============================================================ */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* ============================================================ */}
-            {/* CUSTOMER ROUTES - Owner/Investor Site */}
-            {/* ============================================================ */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute requireAuth>
-                  <OwnerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-properties"
-              element={
-                <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
-                  <MyPropertiesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/properties/new"
-              element={
-                <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
-                  <CreatePropertyPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/properties/:id/edit"
-              element={
-                <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
-                  <CreatePropertyPage />
-                </ProtectedRoute>
-              }
-            />
-            {/* Placeholder routes for customer portal */}
-            <Route
-              path="/applications"
-              element={
-                <ProtectedRoute requireAuth>
-                  <PlaceholderPage title="Applications" description="View and manage rental applications for your properties." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/payments"
-              element={
-                <ProtectedRoute requireAuth>
-                  <PlaceholderPage title="Payments" description="Track rent payments and transaction history." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/maintenance"
-              element={
-                <ProtectedRoute requireAuth>
-                  <PlaceholderPage title="Maintenance" description="Manage maintenance requests and vendor assignments." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/account"
-              element={
-                <ProtectedRoute requireAuth>
-                  <PlaceholderPage title="Account Settings" description="Manage your profile, notifications, and security settings." />
-                </ProtectedRoute>
-              }
-            />
+              {/* ============================================================ */}
+              {/* CUSTOMER ROUTES - Owner/Investor Site */}
+              {/* ============================================================ */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <OwnerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              {/* New route for seller dashboard */}
+              <Route
+                path="/seller/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <SellerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-properties"
+                element={
+                  <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
+                    <MyPropertiesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/properties/new"
+                element={
+                  <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
+                    <CreatePropertyPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/properties/:id/edit"
+                element={
+                  <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
+                    <CreatePropertyPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Placeholder routes for customer portal */}
+              <Route
+                path="/applications"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <PlaceholderPage title="Applications" description="View and manage rental applications for your properties." />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/payments"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <PlaceholderPage title="Payments" description="Track rent payments and transaction history." />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/maintenance"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <PlaceholderPage title="Maintenance" description="Manage maintenance requests and vendor assignments." />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/account"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <PlaceholderPage title="Account Settings" description="Manage your profile, notifications, and security settings." />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* ============================================================ */}
-            {/* ADMIN ROUTES - Admin Site */}
-            {/* ============================================================ */}
-            <Route
-              path="/admin"
-              element={
-                <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <AdminDashboard />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/properties"
-              element={
-                <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <PlaceholderPage title="Property Management" description="Review, approve, and manage all platform properties." isAdmin />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <UsersPage />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/applications"
-              element={
-                <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <PlaceholderPage title="Application Management" description="Review tenant applications and screening results." isAdmin />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/transactions"
-              element={
-                <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <PlaceholderPage title="Transactions" description="Monitor payments, refunds, and financial activity." isAdmin />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/maintenance"
-              element={
-                <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
-                  <PlaceholderPage title="Maintenance Requests" description="Manage maintenance requests and vendor assignments." isAdmin />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/reports"
-              element={
-                <RoleBasedRoute allowedRoles={['super_admin']} layout="admin">
-                  <PlaceholderPage title="Reports & Analytics" description="View platform performance, revenue, and usage analytics." isAdmin />
-                </RoleBasedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <RoleBasedRoute allowedRoles={['super_admin']} layout="admin">
-                  <PlaceholderPage title="Platform Settings" description="Configure platform fees, approval thresholds, and system settings." isAdmin />
-                </RoleBasedRoute>
-              }
-            />
+              {/* ============================================================ */}
+              {/* ADMIN ROUTES - Admin Site */}
+              {/* ============================================================ */}
+              <Route
+                path="/admin"
+                element={
+                  <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
+                    <AdminDashboard />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/properties"
+                element={
+                  <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
+                    <PlaceholderPage title="Property Management" description="Review, approve, and manage all platform properties." isAdmin />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
+                    <UsersPage />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/applications"
+                element={
+                  <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
+                    <PlaceholderPage title="Application Management" description="Review tenant applications and screening results." isAdmin />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/transactions"
+                element={
+                  <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
+                    <PlaceholderPage title="Transactions" description="Monitor payments, refunds, and financial activity." isAdmin />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/maintenance"
+                element={
+                  <RoleBasedRoute allowedRoles={['operations_admin', 'super_admin']} layout="admin">
+                    <PlaceholderPage title="Maintenance Requests" description="Manage maintenance requests and vendor assignments." isAdmin />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/reports"
+                element={
+                  <RoleBasedRoute allowedRoles={['super_admin']} layout="admin">
+                    <PlaceholderPage title="Reports & Analytics" description="View platform performance, revenue, and usage analytics." isAdmin />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/admin/settings"
+                element={
+                  <RoleBasedRoute allowedRoles={['super_admin']} layout="admin">
+                    <PlaceholderPage title="Platform Settings" description="Configure platform fees, approval thresholds, and system settings." isAdmin />
+                  </RoleBasedRoute>
+                }
+              />
 
-            {/* Catch-all redirect */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
+              {/* Catch-all redirect */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
 
-        {/* Global Toast Notifications */}
-        <ToastContainer />
+          {/* Global Comparison Dock - Appears when items are selected */}
+          <CompareDock />
+
+          {/* Global Toast Notifications */}
+          <ToastContainer />
+        </ComparisonProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
@@ -241,4 +261,3 @@ function PlaceholderPage({ title, description, isAdmin = false }: { title: strin
     </div>
   );
 }
-

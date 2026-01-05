@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthHook } from '../../hooks';
 import { User, LogOut, LayoutDashboard, Settings } from 'lucide-react';
@@ -7,11 +7,30 @@ export default function Header() {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
 
     // Auth State
     const { isAuthenticated, user, logout } = useAuthHook();
 
     const isActive = (path: string) => location.pathname === path;
+
+    // Check if we are on the homepage
+    const isHomePage = location.pathname === '/';
+
+    // Scroll Listener
+    useEffect(() => {
+        const handleScroll = () => {
+            // Updated to simple check, can be refined
+            if (window.scrollY > 10) {
+                setIsScrolled(true);
+            } else {
+                setIsScrolled(false);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const handleLogout = async () => {
         await logout();
@@ -19,9 +38,15 @@ export default function Header() {
         setIsMobileMenuOpen(false);
     };
 
+    // Dynamic classes based on scroll state & Route
+    // Logic: Solid Dark Blue if Scrolled OR NOT Homepage
+    const headerClasses = (isScrolled || !isHomePage)
+        ? 'bg-[#0f172a] shadow-lg py-4' // User requested #0f172a
+        : 'bg-transparent py-6';
+
     return (
-        <header className="fixed top-0 left-0 right-0 z-[100] bg-[#0a1628]/95 backdrop-blur-md border-b border-white/10 shadow-lg">
-            <nav className="px-6 py-4">
+        <header className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ease-in-out border-b border-white/10 ${headerClasses}`}>
+            <nav className="px-6">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     {/* Logo - Gold/Bronze style */}
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
@@ -40,7 +65,7 @@ export default function Header() {
                             { path: '/', label: 'HOME' },
                             { path: '/buy', label: 'BUY' },
                             { path: '/rent', label: 'RENT' },
-                            { path: '/pricing', label: 'PRICING' },
+                            { path: '/sell', label: 'SELL' },
                             // Only show Dashboard if logged in? Or for everyone? Assuming protected route elsewhere.
                             ...(isAuthenticated ? [{ path: '/dashboard', label: 'DASHBOARD' }] : []),
                         ].map(({ path, label }) => {
@@ -115,7 +140,7 @@ export default function Header() {
                             { path: '/', label: 'HOME' },
                             { path: '/buy', label: 'BUY' },
                             { path: '/rent', label: 'RENT' },
-                            { path: '/pricing', label: 'PRICING' },
+                            { path: '/sell', label: 'SELL' },
                             ...(isAuthenticated ? [{ path: '/dashboard', label: 'DASHBOARD' }] : []),
                         ].map(({ path, label }) => (
                             <Link
