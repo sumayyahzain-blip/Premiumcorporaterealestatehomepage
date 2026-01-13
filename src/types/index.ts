@@ -136,6 +136,7 @@ export interface Property {
 
     // Relations
     images?: PropertyImage[];
+    contact_phone?: string;
 }
 
 export interface PropertyImage {

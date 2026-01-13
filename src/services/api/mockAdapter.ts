@@ -450,5 +450,16 @@ export const mockApiAdapter: ApiClientInterface = {
                 incomeTrend: 8.4
             });
         }
+    },
+
+    chat: {
+        async send(data) {
+            await sleep(SIMULATED_LATENCY_MS);
+            return success({
+                senderInfo: { role: 'assistant' },
+                content: "I'm a mock AI assistant. I see you said: " + data.message,
+                timestamp: new Date().toISOString()
+            });
+        }
     }
 };

@@ -92,7 +92,8 @@ export enum ApiRoutes {
 export type {
     LoginRequest, LoginResponse,
     RegisterRequest, RegisterResponse,
-    RefreshTokenRequest, RefreshTokenResponse
+    RefreshTokenRequest, RefreshTokenResponse,
+    ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, VerifyEmailRequest
 };
 
 // =============================================================================
@@ -173,6 +174,33 @@ export interface RespondToOfferRequest {
 }
 
 // =============================================================================
+// CHAT CONTRACTS
+// =============================================================================
+
+export interface ChatMessage {
+    senderInfo: {
+        role: 'user' | 'system' | 'assistant';
+        userId?: string;
+    };
+    content: string;
+    timestamp: string;
+    context?: {
+        pageUrl?: string;
+        selectedPropertyId?: string;
+    };
+}
+
+export interface SendMessageRequest {
+    message: string;
+    context?: any;
+}
+
+export interface SendMessageResponse {
+    success: boolean;
+    data: ChatMessage;
+}
+
+// =============================================================================
 // GENERIC API CLIENT INTERFACE
 // =============================================================================
 
@@ -209,5 +237,8 @@ export interface ApiClientInterface {
     };
     dashboard: {
         getStats(): Promise<ApiResponse<DashboardStatsResponse>>;
+    };
+    chat: {
+        send(data: SendMessageRequest): Promise<ApiResponse<ChatMessage>>;
     };
 }

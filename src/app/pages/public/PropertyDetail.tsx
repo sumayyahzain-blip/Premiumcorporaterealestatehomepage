@@ -1,19 +1,19 @@
-/**
- * GRADE A REALTY - Property Details Page
- * Phase 2 Implementation (Connected to API)
- */
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Bed, Bath, Maximize, Share2, Heart, Calendar, TrendingUp, ArrowLeft, Home, Loader2, AlertCircle } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Share2, Heart, TrendingUp, ArrowLeft, Home, Loader2, AlertCircle, MessageCircle } from 'lucide-react';
 import { showInfoToast, showSuccessToast } from '../../components/ToastContainer';
-import { api } from '../../../services/api';
+import { supabase } from '../../../lib/supabaseClient';
 import type { Property } from '../../../types';
 import PropertyMap from '../../components/ui/PropertyMap';
 
+import { useSupabaseAuth } from '../../../lib/AuthContext';
+
+// Inside component
 export default function PropertyDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useSupabaseAuth(); // Use new auth context
 
     // State
     const [property, setProperty] = useState<Property | null>(null);
@@ -22,10 +22,32 @@ export default function PropertyDetail() {
 
     // UI State
     const [isSaved, setIsSaved] = useState(false);
-    const [activeImage, setActiveImage] = useState(0);
 
-    // Fetch Property
+    // Check Saved Status
     useEffect(() => {
+        let ismounted = true;
+        const checkSaved = async () => {
+            if (!user || !id) {
+                if (ismounted) setIsSaved(false);
+                return;
+            }
+            // Check if this property is in saved_properties for this user
+            const { data, error } = await supabase
+                .from('saved_properties')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('property_id', id)
+                .single();
+
+            if (ismounted) setIsSaved(!!data);
+        };
+        checkSaved();
+        return () => { ismounted = false; };
+    }, [user, id]);
+
+    // Fetch Property (Direct Supabase)
+    useEffect(() => {
+        // ... (existing fetch logic remains same)
         let ismounted = true;
         const fetchProperty = async () => {
             if (!id) return;
@@ -33,16 +55,53 @@ export default function PropertyDetail() {
             setError(null);
 
             try {
-                const response = await api.properties.get(id);
-                if (ismounted) {
-                    if (response.success && response.data) {
-                        setProperty(response.data);
-                    } else {
-                        setError(response.error?.message || 'Property not found');
-                    }
+                // Fetch single property by ID
+                const { data, error } = await supabase
+                    .from('properties')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+
+                if (ismounted && data) {
+                    // Map Simple DB Schema to Frontend Property Model
+                    const mappedProperty: any = {
+                        id: data.id,
+                        title: data.title,
+                        salePrice: data.price, // Mapping 'price' to salePrice
+                        rentPrice: null,
+                        addressLine1: data.address,
+                        city: 'New York', // Default/Mock for now
+                        state: 'NY',
+                        postalCode: '10001',
+                        bedrooms: data.beds,
+                        bathrooms: data.baths,
+                        squareFeet: data.sqft,
+                        listingType: data.type,
+                        propertyType: 'house', // Default
+                        status: 'active',
+                        // Enhance with Defaults for UI
+                        amenities: ['Central Air', 'Hardwood Floors', 'Dishwasher', 'Washer/Dryer'],
+                        description: `A beautiful ${data.sqft} sqft ${data.type === 'buy' ? 'home for sale' : 'rental property'} located at ${data.address}. Features ${data.beds} bedrooms and ${data.baths} bathrooms.`,
+                        // Image Handling
+                        primaryImageUrl: data.image_url,
+                        images: [{ url: data.image_url, isPrimary: true }],
+                        // Financial Mocks
+                        estimatedAnnualIncome: data.price * 0.08,
+                        capRate: 5.5,
+                        estimatedRoi: 7.2,
+                        hoaFees: 350,
+                        // Location Mocks (Default to NYC if no geocoding)
+                        latitude: data.latitude || 40.7128,
+                        longitude: data.longitude || -74.0060
+                    };
+
+                    setProperty(mappedProperty);
                 }
-            } catch (err) {
-                if (ismounted) setError('Failed to load property details');
+            } catch (err: any) {
+                console.error('Error fetching property:', err);
+                if (ismounted) setError('Failed to load property details. It may not exist.');
             } finally {
                 if (ismounted) setLoading(false);
             }
@@ -57,22 +116,40 @@ export default function PropertyDetail() {
         showSuccessToast('Link Copied', 'Property link copied to clipboard!');
     };
 
-    const handleSave = () => {
-        setIsSaved(!isSaved);
-        if (!isSaved) {
-            showSuccessToast('Saved', 'Property added to your saved list');
-        } else {
-            showInfoToast('Removed', 'Property removed from saved list');
+    const handleSave = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
         }
-    };
 
-    const handleScheduleViewing = (e: React.FormEvent) => {
-        e.preventDefault();
-        showSuccessToast('Request Sent', 'Your viewing request has been submitted. An agent will contact you soon.');
-    };
+        const previousState = isSaved;
+        setIsSaved(!isSaved); // Optimistic
 
-    const handleContactAgent = () => {
-        showInfoToast('Contact Agent', 'Opening contact options...');
+        try {
+            if (previousState) {
+                // Remove
+                const { error } = await supabase
+                    .from('saved_properties')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('property_id', id);
+
+                if (error) throw error;
+                showInfoToast('Removed', 'Property removed from saved list');
+            } else {
+                // Add
+                const { error } = await supabase
+                    .from('saved_properties')
+                    .insert({ user_id: user.id, property_id: id });
+
+                if (error) throw error;
+                showSuccessToast('Saved', 'Property added to your saved list');
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            setIsSaved(previousState); // Revert
+            showInfoToast('Error', 'Could not update saved status');
+        }
     };
 
     // Helper functions
@@ -87,27 +164,13 @@ export default function PropertyDetail() {
     };
 
     const getImages = (p: Property) => {
-        const fallbackImages = [
-            'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=1600',
-            'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-            'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-            'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-            'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800',
-        ];
-
-        let validImages = p.images?.map(img => img.url) || [];
-
-        // Handle legacy primaryImageUrl
-        if (validImages.length === 0 && (p as any).primaryImageUrl) {
-            validImages = [(p as any).primaryImageUrl];
+        // Just return the one image repeated to fill the grid (UI polish)
+        const mainImg = (p as any).primaryImageUrl || (p.images && p.images[0]?.url);
+        if (mainImg) {
+            // Return array of 5 identical images to make the bento grid look full
+            return Array(5).fill(mainImg);
         }
-
-        // Pad with fallbacks if needed to ensure we have enough for the grid (5 images)
-        if (validImages.length < 5) {
-            return [...validImages, ...fallbackImages.slice(0, 5 - validImages.length)];
-        }
-
-        return validImages;
+        return ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'];
     };
 
     if (loading) {
@@ -129,10 +192,10 @@ export default function PropertyDetail() {
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Property Not Found</h2>
                     <p className="text-gray-600 mb-6">{error || "We couldn't find the property you're looking for."}</p>
                     <button
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/buy')}
                         className="bg-slate-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"
                     >
-                        Back to Home
+                        Back to Listings
                     </button>
                 </div>
             </div>
@@ -141,17 +204,6 @@ export default function PropertyDetail() {
 
     const images = getImages(property);
 
-    // Mock Amenities and Schools if not present
-    const amenities = property.amenities && property.amenities.length > 0 ? property.amenities : [
-        'Central Air', 'Hardwood Floors', 'Dishwasher', 'Washer/Dryer', 'Garage Parking', 'Swimming Pool', 'Smart Home', 'Fireplace'
-    ];
-
-    const schools = [
-        { name: 'Lincoln Elementary', type: 'Public', grade: 'K-5', rating: 9 },
-        { name: 'Washington Middle', type: 'Public', grade: '6-8', rating: 8 },
-        { name: 'Roosevelt High', type: 'Public', grade: '9-12', rating: 9 },
-    ];
-
     return (
         <div className="pt-24 pb-12 min-h-screen bg-gray-50">
             <div className="max-w-[1440px] mx-auto px-6">
@@ -159,7 +211,7 @@ export default function PropertyDetail() {
                 {/* Back Navigation */}
                 <div className="mb-6">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/buy')}
                         className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
                     >
                         <ArrowLeft size={18} />
@@ -175,7 +227,7 @@ export default function PropertyDetail() {
                             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{getPrice(property)}</h1>
                             <div className="flex items-center gap-2 text-gray-600">
                                 <MapPin size={18} />
-                                <span>{property.addressLine1}, {property.city}, {property.state} {property.postalCode}</span>
+                                <span>{property.addressLine1}</span>
                             </div>
                             <h2 className="text-xl text-gray-700 mt-2">{property.title}</h2>
                         </div>
@@ -204,7 +256,6 @@ export default function PropertyDetail() {
                     <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[550px] rounded-[2rem] overflow-hidden">
                         {/* Main Hero Image */}
                         <div
-                            onClick={() => console.log("Open Full Screen Gallery")}
                             className="col-span-2 row-span-2 relative group cursor-pointer"
                         >
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
@@ -216,10 +267,9 @@ export default function PropertyDetail() {
                         </div>
 
                         {/* Side Quads */}
-                        {images.slice(1, 5).map((img, idx) => (
+                        {images.slice(1, 5).map((img: string, idx: number) => (
                             <div
                                 key={idx}
-                                onClick={() => console.log("Open Full Screen Gallery")}
                                 className="relative group cursor-pointer overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
@@ -287,7 +337,7 @@ export default function PropertyDetail() {
                         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
                             <h2 className="text-2xl font-bold text-gray-900 mb-6">Amenities</h2>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
-                                {amenities.map((amenity, idx) => (
+                                {property.amenities?.map((amenity, idx) => (
                                     <div key={idx} className="flex items-center gap-3 text-gray-700">
                                         <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                         <span>{amenity}</span>
@@ -323,31 +373,13 @@ export default function PropertyDetail() {
                             </div>
                         </div>
 
-                        {/* Schools Section (Mock) */}
-                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6">Nearby Schools</h2>
-                            <div className="space-y-4">
-                                {schools.map((school, i) => (
-                                    <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                        <div>
-                                            <div className="font-bold text-gray-900">{school.name}</div>
-                                            <div className="text-sm text-gray-500">{school.type} • Grades {school.grade}</div>
-                                        </div>
-                                        <div className="bg-white px-3 py-1 rounded-lg border border-gray-200 font-bold text-gray-900 shadow-sm">
-                                            {school.rating}/10
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
                         {/* Map Section */}
                         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">Location</h2>
                             <PropertyMap
-                                latitude={property.latitude}
-                                longitude={property.longitude}
-                                address={`${property.addressLine1 || ''}, ${property.city || ''}`}
+                                latitude={property.latitude || 40.7128}
+                                longitude={property.longitude || -74.0060}
+                                address={property.addressLine1 || 'Location Hidden'}
                                 price={property.listingType === 'rent' ? property.rentPrice : property.salePrice}
                                 status={property.status}
                             />
@@ -401,9 +433,27 @@ export default function PropertyDetail() {
                                 <button className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl">
                                     Request Info
                                 </button>
-                                <button className="w-full bg-white border border-slate-900 text-slate-900 hover:bg-gray-50 font-bold py-3.5 rounded-xl transition-all">
-                                    Message Agent
-                                </button>
+
+                                {property.contact_phone ? (
+                                    <button
+                                        onClick={() => {
+                                            const phone = property.contact_phone?.replace(/[^\d]/g, '');
+                                            const text = encodeURIComponent(`Hi, I'm interested in ${property.title} located at ${property.addressLine1}.`);
+                                            window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+                                        }}
+                                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                                    >
+                                        <MessageCircle size={20} />
+                                        WhatsApp Agent
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => window.location.href = 'mailto:support@gradea.com'}
+                                        className="w-full bg-white border border-slate-900 text-slate-900 hover:bg-gray-50 font-bold py-3.5 rounded-xl transition-all"
+                                    >
+                                        Contact Support
+                                    </button>
+                                )}
                             </div>
 
                             {/* Micro-text security */}

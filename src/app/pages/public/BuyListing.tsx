@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PropertyCard } from '../../components/PropertyCard';
 import { ChevronDown, Search, Grid3X3, List, Loader2, AlertCircle } from 'lucide-react';
-import { api } from '../../../services/api';
+import { supabase } from '../../../lib/supabaseClient';
 import type { Property } from '../../../types';
-import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 
 export default function BuyListing() {
     const navigate = useNavigate();
@@ -13,11 +13,6 @@ export default function BuyListing() {
     // Data State
     const [properties, setProperties] = useState<Property[]>([]);
 
-    // Pagination State
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const pageSize = 9;
-
     // Loading & Error States
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -25,78 +20,62 @@ export default function BuyListing() {
     // Filter Logic State
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('All Types');
-
-    // Applied Filters (to trigger search only on button click or explicit action if desired, 
-    // but typically infinite scroll works best with a single 'active' filter state used by the fetcher)
     const [activeQuery, setActiveQuery] = useState('');
-    const [activeType, setActiveType] = useState('All Types');
 
-    const fetchProperties = useCallback(async (pageNum: number, isNewSearch: boolean = false) => {
-        setLoading(true);
-        if (isNewSearch) {
+    // Fetch Properties from Supabase
+    useEffect(() => {
+        const fetchProperties = async () => {
+            setLoading(true);
             setError(null);
-        }
 
-        try {
-            // Map UI type to API propertyType
-            let propTypeFilter: string[] | undefined = undefined;
-            if (activeType !== 'All Types') {
-                const map: Record<string, string> = { 'House': 'single_family', 'Condo': 'condo', 'Land': 'land' };
-                if (map[activeType]) propTypeFilter = [map[activeType]];
-            }
+            try {
+                // Query properties table (Simple Schema)
+                const { data, error } = await supabase
+                    .from('properties')
+                    .select('*')
+                    .eq('type', 'buy'); // Assuming 'buy' is the value for sale items
 
-            const response = await api.properties.list({
-                listingType: 'sale',
-                page: pageNum,
-                pageSize: pageSize,
-                query: activeQuery || undefined,
-                propertyType: propTypeFilter as any // Cast because mock client types might be strict
-            });
-
-            if (response.success && response.data) {
-                const newItems = response.data.data;
-                const pagination = response.data.pagination;
-
-                if (isNewSearch) {
-                    setProperties(newItems);
-                } else {
-                    setProperties(prev => [...prev, ...newItems]);
+                if (error) {
+                    console.error('Supabase Error:', error);
+                    throw error;
                 }
 
-                setHasMore(pagination.hasNext);
-            } else {
-                setError(response.error?.message || 'Failed to load properties');
+                if (data) {
+                    // Map simple schema to Frontend Property type
+                    const mappedProperties: any[] = data.map(p => ({
+                        id: p.id,
+                        title: p.title,
+                        salePrice: p.price,
+                        rentPrice: null,
+                        addressLine1: p.address,
+                        city: '', // Extracted from address if needed, or left blank
+                        state: '',
+                        postalCode: '',
+                        bedrooms: p.beds,
+                        bathrooms: p.baths,
+                        squareFeet: p.sqft,
+                        listingType: p.type,
+                        propertyType: 'house', // Default
+                        status: 'active',
+                        primaryImageUrl: p.image_url,
+                        images: [{ url: p.image_url, isPrimary: true }]
+                    }));
+                    setProperties(mappedProperties);
+                }
+            } catch (err: any) {
+                console.error('Full connection error:', err);
+                setError(err.message || 'Unknown error occurred while fetching properties');
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error('Failed to fetch properties', err);
-            setError('An unexpected error occurred while loading properties.');
-        } finally {
-            setLoading(false);
-        }
-    }, [activeQuery, activeType]);
+        };
 
-    // Initial Load & On Active Filter Change
-    useEffect(() => {
-        setPage(1);
-        fetchProperties(1, true);
-    }, [activeQuery, activeType, fetchProperties]);
-
-    // Infinite Scroll Callback
-    const loadMore = () => {
-        if (!hasMore || loading) return;
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchProperties(nextPage, false);
-    };
-
-    const scrollRef = useInfiniteScroll(loadMore, hasMore, loading);
+        fetchProperties();
+    }, []);
 
     // Handlers
     const handleSearch = () => {
-        // Trigger fetch by updating active filters
         setActiveQuery(searchQuery);
-        setActiveType(filterType);
-        // Page reset is handled in the useEffect
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -107,34 +86,31 @@ export default function BuyListing() {
         setSearchQuery('');
         setFilterType('All Types');
         setActiveQuery('');
-        setActiveType('All Types');
     };
+
+    // Client-side Filtering
+    const filteredProperties = properties.filter(p => {
+        if (!activeQuery) return true;
+        const q = activeQuery.toLowerCase();
+        // Check title or address
+        return (
+            p.title?.toLowerCase().includes(q) ||
+            (p.addressLine1?.toLowerCase().includes(q))
+        );
+    });
 
     // Helpers
     const getImage = (p: Property) => {
-        return (p as any).primaryImageUrl || (p.images && p.images?.[0]?.url) || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800';
+        return (p as any).primaryImageUrl || (p.images && p.images[0]?.url) || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800';
     };
 
-    const formatPrice = (price: number | null) => {
+    const formatPrice = (price: number | null | undefined) => {
         if (!price) return 'Price on Request';
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(price);
     };
 
     const getAddress = (p: Property) => {
-        return `${p.addressLine1 || ''}, ${p.city || ''}, ${p.state || ''} ${p.postalCode || ''}`;
-    };
-
-    const getStatusColor = (statusVal: string) => {
-        const s = statusVal?.toLowerCase() || '';
-        if (s === 'active' || s === 'for sale' || s === 'for rent') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-        if (s === 'sold' || s === 'rented') return 'bg-red-100 text-red-800 border-red-200';
-        if (s === 'pending') return 'bg-amber-100 text-amber-800 border-amber-200';
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    };
-
-    const formatStatus = (s: string) => {
-        if (!s) return '';
-        return s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return p.addressLine1 || 'Address Hidden';
     };
 
     return (
@@ -144,10 +120,8 @@ export default function BuyListing() {
                 <div className="flex flex-col items-center justify-center mb-10">
                     <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 text-center">Find your next dream home</h1>
 
-                    {/* Zillow-Style Search Pill */}
+                    {/* Search Bar */}
                     <div className="w-full max-w-4xl bg-white rounded-full shadow-lg border border-gray-200 p-2 flex items-center transition-shadow hover:shadow-xl">
-
-                        {/* Location Input Section */}
                         <div className="flex-1 px-6 border-r border-gray-200">
                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Location</label>
                             <input
@@ -160,7 +134,6 @@ export default function BuyListing() {
                             />
                         </div>
 
-                        {/* Type Dropdown Section */}
                         <div className="w-48 px-6 relative">
                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Type</label>
                             <div className="relative">
@@ -178,7 +151,6 @@ export default function BuyListing() {
                             </div>
                         </div>
 
-                        {/* Active Search Button */}
                         <button
                             type="button"
                             onClick={handleSearch}
@@ -192,11 +164,10 @@ export default function BuyListing() {
 
                 {/* Main Content Area */}
                 <div className="flex flex-col gap-8">
-
                     {/* Results Info & View Toggle */}
                     <div className="flex items-center justify-between">
                         <p className="text-gray-500 font-medium">
-                            {properties.length} results
+                            {filteredProperties.length} results
                         </p>
 
                         <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
@@ -215,33 +186,24 @@ export default function BuyListing() {
                         </div>
                     </div>
 
-
                     {/* Results Grid */}
                     <div className="min-h-[500px]">
-                        {loading && properties.length === 0 ? (
+                        {loading ? (
                             <div className="flex flex-col items-center justify-center h-96 text-gray-400">
                                 <Loader2 size={48} className="animate-spin mb-4 text-blue-900" />
-                                <p className="text-lg">Loading properties...</p>
+                                <p className="text-lg">Loading Properties...</p>
                             </div>
-                        ) : error && properties.length === 0 ? (
+                        ) : error ? (
                             <div className="flex flex-col items-center justify-center h-96 text-gray-500 bg-white rounded-xl border border-gray-200">
                                 <AlertCircle size={48} className="mb-4 text-red-500" />
                                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Failed to load properties</h3>
                                 <p className="max-w-md text-center mb-6">{error}</p>
-                                <button
-                                    onClick={() => fetchProperties(1, true)}
-                                    className="px-6 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors"
-                                >
-                                    Retry
-                                </button>
                             </div>
                         ) : (
                             <>
                                 <div className={`grid ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-8`}>
-                                    {properties.map((property) => (
+                                    {filteredProperties.map((property) => (
                                         <div key={property.id} className="relative group">
-
-
                                             <PropertyCard
                                                 type="buy"
                                                 image={getImage(property)}
@@ -250,8 +212,6 @@ export default function BuyListing() {
                                                 beds={property.bedrooms || 0}
                                                 baths={property.bathrooms || 0}
                                                 sqft={property.squareFeet || 0}
-                                                estRent={property.estimatedAnnualIncome ? formatPrice(property.estimatedAnnualIncome / 12) : undefined}
-                                                capRate={property.capRate ? `${property.capRate}%` : undefined}
                                                 className={view === 'list' ? 'flex flex-row' : ''}
                                                 onClick={() => navigate(`/property/${property.id}`)}
                                                 id={property.id}
@@ -261,38 +221,18 @@ export default function BuyListing() {
                                     ))}
                                 </div>
 
-                                {/* Smart Empty State (Airbnb Standard) */}
-                                {properties.length === 0 && !loading && (
+                                {filteredProperties.length === 0 && !loading && (
                                     <div className="col-span-full py-24 text-center text-gray-500 flex flex-col items-center justify-center">
                                         <div className="mb-6">
                                             <Search size={48} className="text-gray-300 mx-auto" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-gray-900 mb-2">
-                                            {activeQuery ? `No homes found in "${activeQuery}"` : 'No homes found'}
-                                        </h3>
-                                        <p className="max-w-sm mx-auto text-gray-500 mb-8">
-                                            We couldn't find any properties matching your search. Try checking your spelling or broadening your search.
-                                        </p>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-2">No homes found</h3>
                                         <button
                                             onClick={resetFilters}
-                                            className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+                                            className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors shadow-sm mt-4"
                                         >
-                                            Clear Filters & Show All
+                                            Clear Filters
                                         </button>
-                                    </div>
-                                )}
-
-                                {/* Loading Spinner / Infinite Scroll Trigger */}
-                                {hasMore && (
-                                    <div ref={scrollRef} className="py-12 flex justify-center">
-                                        {loading ? (
-                                            <div className="flex items-center gap-2 text-gray-500">
-                                                <Loader2 size={24} className="animate-spin text-blue-900" />
-                                                <span>Loading more homes...</span>
-                                            </div>
-                                        ) : (
-                                            <div className="h-8" />
-                                        )}
                                     </div>
                                 )}
                             </>

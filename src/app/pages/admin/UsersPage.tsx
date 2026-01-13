@@ -10,7 +10,7 @@ import {
     CheckCircle, XCircle, Loader2, AlertCircle
 } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader';
-import { api } from '../../../services/api';
+import { api } from '../../../services/api/client';
 import type { User, UserRole } from '../../../types';
 
 const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
@@ -77,9 +77,11 @@ export default function UsersPage() {
 
     // Helper to get primary role label
     const getPrimaryRole = (user: User) => {
-        if (!user.roles || user.roles.length === 0) return { label: 'User', color: 'bg-gray-100 text-gray-800' };
+        if (!user.roles || (Array.isArray(user.roles) && user.roles.length === 0)) return { label: 'User', color: 'bg-gray-100 text-gray-800' };
         // Just take the first one for now
-        const role = user.roles[0].role;
+        // Helper handles string[] or object[] depending on what API returns.
+        // API returns strings in current controller implementation
+        const role: string = typeof user.roles[0] === 'string' ? user.roles[0] : (user.roles[0] as any).role;
         return ROLE_CONFIG[role] || { label: role, color: 'bg-gray-100 text-gray-800' };
     };
 

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Bed, Bath, Maximize, Info, Check, TrendingUp, Car, GraduationCap, Calculator } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
+import { useSupabaseAuth } from '../../lib/AuthContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { useComparison } from '../context/ComparisonContext';
 import type { Property } from '../../types';
@@ -44,12 +46,45 @@ export function PropertyCard({
   id,
   data
 }: PropertyCardProps) {
+  const { user } = useSupabaseAuth();
   const [saved, setSaved] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // Comparison Context
   const { addToCompare, removeFromCompare, isInComparison, selectedProperties } = useComparison();
   const isCompared = id ? isInComparison(id) : false;
+
+  const handleToggleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      alert("Please sign in to save properties.");
+      return;
+    }
+
+    // Optimistic Update
+    const nextState = !saved;
+    setSaved(nextState);
+
+    try {
+      if (nextState) {
+        const { error } = await supabase
+          .from('saved_properties')
+          .insert([{ user_id: user.id, property_id: String(id) }]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('saved_properties')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('property_id', String(id));
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Error saving property:", err);
+      setSaved(!nextState); // Revert
+      alert("Failed to update saved property.");
+    }
+  };
 
   // Mortgage Calculation for "Buy" Context
   const calculateMortgage = (priceStr: string) => {
@@ -102,37 +137,34 @@ export function PropertyCard({
 
         {/* Top Right - Actions Overlay */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 z-20">
-             {/* COMPARE CHECKBOX */}
-            {data && (
-                <label className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm cursor-pointer hover:bg-white transition hover:scale-105">
-                <input
-                    type="checkbox"
-                    checked={isCompared}
-                    className="w-4 h-4 text-[#D4AF37] rounded border-gray-300 focus:ring-[#D4AF37]"
-                    onChange={(e) => {
-                    e.stopPropagation();
-                    if (!data) return;
-                    if (e.target.checked) {
-                        if (selectedProperties.length >= 3) {
-                        alert("You can compare max 3 properties");
-                        return;
-                        }
-                        addToCompare(data);
-                    } else {
-                        if (id) removeFromCompare(id);
+          {/* COMPARE CHECKBOX */}
+          {data && (
+            <label className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm cursor-pointer hover:bg-white transition hover:scale-105">
+              <input
+                type="checkbox"
+                checked={isCompared}
+                className="w-4 h-4 text-[#D4AF37] rounded border-gray-300 focus:ring-[#D4AF37]"
+                onChange={(e) => {
+                  e.stopPropagation();
+                  if (!data) return;
+                  if (e.target.checked) {
+                    if (selectedProperties.length >= 3) {
+                      alert("You can compare max 3 properties");
+                      return;
                     }
-                    }}
-                />
-                <span className="text-xs font-bold text-[#003366] uppercase tracking-wide">Compare</span>
-                </label>
-            )}
+                    addToCompare(data);
+                  } else {
+                    if (id) removeFromCompare(id);
+                  }
+                }}
+              />
+              <span className="text-xs font-bold text-[#003366] uppercase tracking-wide">Compare</span>
+            </label>
+          )}
 
           {/* Save Button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSaved(!saved);
-            }}
+            onClick={handleToggleSave}
             className="self-end p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-all shadow-sm hover:scale-110"
           >
             <Heart
@@ -199,25 +231,25 @@ export function PropertyCard({
 
         {/* Type-specific Details (The Swap) */}
         <div className="mb-2">
-            {type === 'buy' && estMortgage && (
-                <div className="flex items-center gap-2 text-sm text-[var(--gray-600)]">
-                    <div className="p-1.5 bg-[#D4AF37]/10 rounded-full text-[#b5952f]">
-                        <Calculator size={14} />
-                    </div>
-                    <span>Est. Mortgage: <span className="font-bold text-[#0f172a]">{estMortgage}/mo</span></span>
-                </div>
-            )}
+          {type === 'buy' && estMortgage && (
+            <div className="flex items-center gap-2 text-sm text-[var(--gray-600)]">
+              <div className="p-1.5 bg-[#D4AF37]/10 rounded-full text-[#b5952f]">
+                <Calculator size={14} />
+              </div>
+              <span>Est. Mortgage: <span className="font-bold text-[#0f172a]">{estMortgage}/mo</span></span>
+            </div>
+          )}
 
-            {type === 'rent' && (
-                <div className="flex items-center gap-2 text-sm text-[var(--gray-600)]">
-                     <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
-                        <Check size={14} />
-                    </div>
-                    <span>
-                        Available: <span className="font-bold text-emerald-700">{availability?.includes('/') ? 'Soon' : (availability || 'Now')}</span>
-                    </span>
-                </div>
-            )}
+          {type === 'rent' && (
+            <div className="flex items-center gap-2 text-sm text-[var(--gray-600)]">
+              <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
+                <Check size={14} />
+              </div>
+              <span>
+                Available: <span className="font-bold text-emerald-700">{availability?.includes('/') ? 'Soon' : (availability || 'Now')}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* CTA Button */}

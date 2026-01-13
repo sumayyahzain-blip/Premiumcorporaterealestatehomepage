@@ -5,9 +5,11 @@
 
 import { ApiClientInterface } from '../../types/api';
 import { mockApiAdapter } from './mockAdapter';
+import { realApiAdapter } from './realAdapter';
 
 // Configuration to switch between Mock and Real API
-const USE_MOCK_API = true; // Hardcoded for Phase 2.2 as requested
+// Phase 2: Switching to Real API (make sure backend is running)
+const USE_MOCK_API = false;
 
 /**
  * The main API client instance.
@@ -15,6 +17,6 @@ const USE_MOCK_API = true; // Hardcoded for Phase 2.2 as requested
  */
 export const api: ApiClientInterface = USE_MOCK_API
     ? mockApiAdapter
-    : mockApiAdapter; // Fallback to mock for now until Real adapter is implemented
+    : realApiAdapter;
 
 export default api;

@@ -6,10 +6,12 @@ import Homepage from './pages/public/Homepage';
 import BuyListing from './pages/public/BuyListing';
 import RentListing from './pages/public/RentListing';
 import PropertyDetail from './pages/public/PropertyDetail';
-import OwnerDashboard from './pages/customer/OwnerDashboard';
+import ComparePage from './pages/public/ComparePage';
+import UserDashboard from './pages/protected/UserDashboard';
 import SellLandingPage from './pages/public/Sell';
 import CreatePropertyPage from './pages/customer/CreatePropertyPage';
 import MyPropertiesPage from './pages/customer/MyPropertiesPage';
+import AddProperty from './pages/protected/AddProperty';
 
 // Auth pages
 import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/auth';
@@ -28,6 +30,7 @@ import { AdminLayout, RoleBasedRoute } from './components/RoleLayouts';
 // Comparison Feature
 import { ComparisonProvider } from './context/ComparisonContext';
 import CompareDock from './components/CompareDock';
+import ChatWidget from './components/ChatWidget';
 
 // Layout component to conditionally show header
 function Layout({ children }: { children: React.ReactNode }) {
@@ -66,6 +69,8 @@ export default function App() {
               <Route path="/rent" element={<RentListing />} />
               <Route path="/property/:id" element={<PropertyDetail />} />
               <Route path="/sell" element={<SellLandingPage />} />
+              <Route path="/pricing" element={<PlaceholderPage title="Pricing" description="View our competitive pricing plans for buyers and sellers." />} />
+              <Route path="/compare" element={<ComparePage />} />
 
               {/* ============================================================ */}
               {/* AUTH ROUTES */}
@@ -81,7 +86,7 @@ export default function App() {
                 path="/dashboard"
                 element={
                   <ProtectedRoute requireAuth>
-                    <OwnerDashboard />
+                    <UserDashboard />
                   </ProtectedRoute>
                 }
               />
@@ -99,6 +104,14 @@ export default function App() {
                 element={
                   <ProtectedRoute requireAuth requireAnyRole={['owner', 'investor', 'operations_admin', 'super_admin']}>
                     <MyPropertiesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/add-property"
+                element={
+                  <ProtectedRoute requireAuth>
+                    <AddProperty />
                   </ProtectedRoute>
                 }
               />
@@ -230,6 +243,9 @@ export default function App() {
 
           {/* Global Toast Notifications */}
           <ToastContainer />
+
+          {/* AI Chat Widget */}
+          <ChatWidget />
         </ComparisonProvider>
       </AuthProvider>
     </ErrorBoundary>

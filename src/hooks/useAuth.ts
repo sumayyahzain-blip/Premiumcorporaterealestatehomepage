@@ -33,6 +33,7 @@ export function useAuthHook() {
         refreshToken,
         login: storeLogin,
         logout: storeLogout,
+        setUser, // Add setUser
         updateUser,
         setLoading,
         setError,
@@ -102,16 +103,19 @@ export function useAuthHook() {
             const response = await api.auth.me();
             if (response.success && response.data) {
                 const apiUser = response.data;
-                // Map roles for AuthUser (UserRole[])
-                const authUserRoles: UserRole[] = apiUser.roles?.map(r => r.role) || [];
-                updateUser({ ...apiUser, roles: authUserRoles });
+                // Map roles for AuthUser (UserRole[]) - handle both string[] and object[] for robustness
+                const authUserRoles: UserRole[] = apiUser.roles?.map((r: any) =>
+                    (typeof r === 'string' ? r : r.role) as UserRole
+                ) || [];
+                // Use setUser to fully initialize the session (sets isAuthenticated: true)
+                setUser({ ...apiUser, roles: authUserRoles } as any);
             } else {
                 storeLogout();
             }
         } catch (error) {
             // storeLogout(); // Only logout on auth error?
         }
-    }, [updateUser, storeLogout]);
+    }, [setUser, storeLogout]);
 
     const initializeSession = useCallback(async () => {
         setLoading(true);
@@ -255,7 +259,7 @@ export function useAuthHook() {
             setError({
                 code: response.error?.code || 'REGISTER_ERROR',
                 message: response.error?.message || 'Registration failed',
-                field: response.error?.details?.field
+                field: response.error?.details?.field?.[0]
             });
             return false;
 

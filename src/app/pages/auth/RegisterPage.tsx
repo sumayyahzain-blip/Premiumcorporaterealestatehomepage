@@ -1,68 +1,78 @@
-/**
- * GRADE A REALTY - Register Page
- * User registration component
- * Phase 1 Implementation
- */
 
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuthHook } from '../../../hooks/useAuth';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Lock, Mail, User, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../../../lib/supabaseClient';
+import { showInfoToast } from '../../components/ToastContainer';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { register, isLoading, error, clearError } = useAuthHook();
 
-    // Get pre-filled email if available
-    const prefilledEmail = (location.state as { email?: string })?.email || '';
+    // Form State
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-    const [formData, setFormData] = useState({
-        fullName: '',
-        email: prefilledEmail,
-        password: '',
-        acceptTerms: false,
-    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [success, setSuccess] = useState(false);
 
-    useEffect(() => {
-        if (prefilledEmail) {
-            setFormData(prev => ({ ...prev, email: prefilledEmail }));
-        }
-    }, [prefilledEmail]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value,
-        }));
-        if (error) clearError();
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
+        setError(null);
 
-        if (!formData.acceptTerms) return;
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        first_name: firstName,
+                        last_name: lastName,
+                        full_name: `${firstName} ${lastName}`.trim(),
+                    },
+                },
+            });
 
-        // Split Full Name
-        const nameParts = formData.fullName.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
+            if (error) throw error;
 
-        const success = await register({
-            email: formData.email,
-            password: formData.password,
-            firstName: firstName,
-            lastName: lastName || firstName, // Fallback if no last name
-            role: 'renter', // Default role
-            acceptTerms: formData.acceptTerms,
-        });
-
-        if (success) {
-            navigate('/dashboard', { replace: true });
+            if (data.user) {
+                setSuccess(true);
+                showInfoToast('Account Created', 'Please check your email to confirm your account.');
+            }
+        } catch (err: any) {
+            console.error('Registration error:', err);
+            setError(err.message || 'Failed to sign up');
+        } finally {
+            setLoading(false);
         }
     };
+
+    if (success) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#0f172a] px-4">
+                <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 shadow-2xl max-w-md w-full text-center">
+                    <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Mail className="w-8 h-8 text-emerald-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Check your email</h2>
+                    <p className="text-gray-400 mb-8">
+                        We've sent a confirmation link to <span className="text-white font-medium">{email}</span>.
+                        Please click the link to verify your account.
+                    </p>
+                    <Link
+                        to="/login"
+                        className="block w-full py-4 bg-[#D4AF37] hover:bg-[#b5952f] text-white font-bold rounded-xl transition-all"
+                    >
+                        Return to Login
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 py-12 relative overflow-hidden">
@@ -73,7 +83,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="w-full max-w-md z-10">
-                {/* Logo */}
+                {/* Logo Area */}
                 <div className="text-center mb-10">
                     <Link to="/" className="inline-block group">
                         <div className="flex items-center justify-center gap-3">
@@ -86,118 +96,93 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Register Card */}
-                <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 shadow-2xl relative">
-                    <div className="text-center mb-6 mt-2">
+                <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 shadow-2xl">
+                    <div className="text-center mb-8">
                         <h1 className="text-2xl font-bold text-white">Create Account</h1>
-                        <p className="text-gray-400 mt-2 text-sm">Join the premium real estate platform</p>
+                        <p className="text-gray-400 mt-2">Join Grade A Realty today</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Full Name Field */}
-                        <div>
+                    <form onSubmit={handleRegister} className="space-y-4">
+
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="relative">
-                                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="text"
-                                    name="fullName"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    placeholder="Full Name"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    placeholder="First Name"
                                     required
-                                    className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium text-white"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium"
                                 />
                             </div>
-                        </div>
-
-                        {/* Email Field */}
-                        <div>
                             <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    placeholder="Email Address"
+                                    type="text"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    placeholder="Last Name"
                                     required
-                                    className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium text-white"
+                                    className="w-full pl-4 pr-4 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium"
                                 />
                             </div>
                         </div>
 
-                        {/* Password Field */}
-                        <div>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    placeholder="Password"
-                                    required
-                                    className="w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium text-white"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                                >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Terms Checkbox */}
-                        <div className="flex items-center gap-3 px-1">
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <input
-                                type="checkbox"
-                                name="acceptTerms"
-                                checked={formData.acceptTerms}
-                                onChange={handleChange}
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Email Address"
                                 required
-                                className="w-4 h-4 rounded border-white/20 bg-white/5 text-[#D4AF37] focus:ring-[#D4AF37]/50"
+                                className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium"
                             />
-                            <label className="text-sm text-gray-400">
-                                I agree to the{' '}
-                                <Link to="/terms" className="text-[#D4AF37] hover:text-[#eac34d]">Terms</Link>
-                                {' '}and{' '}
-                                <Link to="/privacy" className="text-[#D4AF37] hover:text-[#eac34d]">Privacy Policy</Link>
-                            </label>
+                        </div>
+
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Password"
+                                required
+                                minLength={6}
+                                className="w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] transition-all font-medium"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
                         </div>
 
                         {/* Error Message */}
                         {error && (
-                            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm animate-in fade-in slide-in-from-bottom-2">
+                            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                <span>{error.message}</span>
+                                <span>{error}</span>
                             </div>
                         )}
 
-                        {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={isLoading || !formData.acceptTerms}
-                            className="w-full py-4 bg-[#D4AF37] hover:bg-[#b5952f] text-white font-bold rounded-xl shadow-lg shadow-[#D4AF37]/20 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            disabled={loading}
+                            className="w-full py-4 bg-[#D4AF37] hover:bg-[#b5952f] text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 flex items-center justify-center"
                         >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Creating Account...
-                                </>
-                            ) : (
-                                'Create Account'
-                            )}
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
                         </button>
-                    </form>
 
-                    {/* Sign In Link */}
-                    <p className="text-center text-gray-500 mt-6 text-sm">
-                        Already have an account?{' '}
-                        <Link to="/login" className="text-[#D4AF37] hover:text-[#eac34d] font-bold transition-colors">
-                            Sign in
-                        </Link>
-                    </p>
+                        <div className="text-center text-sm text-gray-400">
+                            Already have an account?{' '}
+                            <Link to="/login" className="text-[#D4AF37] hover:text-white transition-colors font-medium">
+                                Sign in
+                            </Link>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

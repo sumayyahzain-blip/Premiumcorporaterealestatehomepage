@@ -21,8 +21,7 @@ export default function Homepage() {
 
         async function fetchFeatured() {
             try {
-                // Using unified API client to fetch listings
-                // Limiting to 3 for 'Featured' section
+                // Fetch real data from Backend
                 const response = await api.properties.list({
                     listingType: 'sale',
                     page: 1,
@@ -31,7 +30,6 @@ export default function Homepage() {
 
                 if (ismounted) {
                     if (response.success && response.data) {
-                        // Ensure we strictly take 3 just in case pageSize isn't respected by mock
                         setFeaturedProperties(response.data.data.slice(0, 3));
                     } else {
                         setError(true);
