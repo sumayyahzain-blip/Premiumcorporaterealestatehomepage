@@ -5,7 +5,8 @@ import { MapPin, Bed, Bath, Maximize, Share2, Heart, TrendingUp, ArrowLeft, Home
 import { showInfoToast, showSuccessToast } from '../../components/ToastContainer';
 import { supabase } from '../../../lib/supabaseClient';
 import type { Property } from '../../../types';
-import PropertyMap from '../../components/ui/PropertyMap';
+import MapEngine from '../../components/MapEngine';
+import { InvestmentCalculator } from '../../components/InvestmentCalculator';
 
 import { useSupabaseAuth } from '../../../lib/AuthContext';
 
@@ -109,6 +110,21 @@ export default function PropertyDetail() {
 
         fetchProperty();
         return () => { ismounted = false; };
+    }, [id]);
+
+    // Track View Count
+    useEffect(() => {
+        const trackView = async () => {
+            if (!id) return;
+            try {
+                const { data } = await supabase.from('properties').select('view_count').eq('id', id).single();
+                const currentViews = data?.view_count || 0;
+                await supabase.from('properties').update({ view_count: currentViews + 1 }).eq('id', id);
+            } catch (err) {
+                console.error("Failed to track view", err);
+            }
+        };
+        trackView();
     }, [id]);
 
     const handleShare = () => {
@@ -346,6 +362,34 @@ export default function PropertyDetail() {
                             </div>
                         </div>
 
+                        {/* Map Section - REORDERED: Above Investment Calculator */}
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">Explore the Neighborhood</h2>
+                                    <p className="text-gray-500 mt-1">{property.addressLine1}</p>
+                                </div>
+                                <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${property.latitude || 40.7128},${property.longitude || -74.0060}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-5 py-2.5 border-2 border-slate-900 text-slate-900 font-bold rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm justify-center"
+                                >
+                                    <MapPin size={16} />
+                                    Get Directions
+                                </a>
+                            </div>
+
+                            <div className="h-96 rounded-xl overflow-hidden border border-gray-100">
+                                <MapEngine
+                                    properties={[property]}
+                                    center={[property.latitude || 40.7128, property.longitude || -74.0060]}
+                                    zoom={14}
+                                    className="h-full w-full"
+                                />
+                            </div>
+                        </div>
+
                         {/* Investment Analysis */}
                         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
                             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -373,17 +417,12 @@ export default function PropertyDetail() {
                             </div>
                         </div>
 
-                        {/* Map Section */}
-                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Location</h2>
-                            <PropertyMap
-                                latitude={property.latitude || 40.7128}
-                                longitude={property.longitude || -74.0060}
-                                address={property.addressLine1 || 'Location Hidden'}
-                                price={property.listingType === 'rent' ? property.rentPrice : property.salePrice}
-                                status={property.status}
-                            />
-                        </div>
+                        {/* Investment Calculator (Only for Sale) */}
+                        {property.listingType === 'sale' && property.salePrice && (
+                            <InvestmentCalculator propertyPrice={property.salePrice} />
+                        )}
+
+
                     </div>
 
                     {/* Right Sidebar - Sticky Agent Card (33%) */}
@@ -436,7 +475,15 @@ export default function PropertyDetail() {
 
                                 {property.contact_phone ? (
                                     <button
-                                        onClick={() => {
+                                        onClick={async () => {
+                                            // 1. Track Lead
+                                            if (id) {
+                                                const { data } = await supabase.from('properties').select('lead_count').eq('id', id).single();
+                                                const currentLeads = data?.lead_count || 0;
+                                                await supabase.from('properties').update({ lead_count: currentLeads + 1 }).eq('id', id);
+                                            }
+
+                                            // 2. Open WhatsApp
                                             const phone = property.contact_phone?.replace(/[^\d]/g, '');
                                             const text = encodeURIComponent(`Hi, I'm interested in ${property.title} located at ${property.addressLine1}.`);
                                             window.open(`https://wa.me/${phone}?text=${text}`, '_blank');

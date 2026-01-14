@@ -151,12 +151,12 @@ export default function UserDashboard() {
                         {activeTab === 'saved' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600"></span>}
                     </button>
                     <button
-                        onClick={() => setActiveTab('listings')}
+                        onClick={() => navigate('/my-properties')}
                         className={`pb-4 px-2 font-medium transition-all relative ${activeTab === 'listings' ? 'text-emerald-600' : 'text-gray-500 hover:text-gray-900'
                             }`}
                     >
-                        My Listings
-                        {activeTab === 'listings' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600"></span>}
+                        Seller Command Center
+                        <span className="ml-2 text-xs bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full">NEW</span>
                     </button>
                 </div>
 
@@ -197,7 +197,9 @@ export default function UserDashboard() {
                                     beds={property.bedrooms || 0}
                                     baths={property.bathrooms || 0}
                                     sqft={property.squareFeet || 0}
+                                    sqft={property.squareFeet || 0}
                                     data={property}
+                                    onClick={() => navigate(`/property/${property.id}`)}
                                 />
                             ))}
                         </div>
@@ -207,7 +209,7 @@ export default function UserDashboard() {
                     <div>
                         <div className="flex justify-end mb-6">
                             <button
-                                onClick={() => navigate('/add-property')}
+                                onClick={() => navigate('/my-properties')}
                                 className="bg-[#D4AF37] hover:bg-[#b5952f] text-[#0f172a] px-5 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2"
                             >
                                 <Home size={18} />
@@ -242,7 +244,9 @@ export default function UserDashboard() {
                                             beds={property.bedrooms || 0}
                                             baths={property.bathrooms || 0}
                                             sqft={property.squareFeet || 0}
+                                            sqft={property.squareFeet || 0}
                                             data={property}
+                                            onClick={() => navigate(`/property/${property.id}`)}
                                         />
                                         <button
                                             onClick={(e) => {

@@ -111,29 +111,40 @@ export function PropertyCard({
           onLoad={() => setImageLoaded(true)}
         />
 
-        {/* Top Left - FIXED STATUS BADGE for Luxury Brand */}
-        {data?.status === 'active' && (
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-[#0f172a] text-white px-3 py-1.5 rounded-lg shadow-md pointer-events-none">
-            {/* Raw SVG Check Icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-3.5 h-3.5"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-
-            {/* Text Label */}
-            <span className="text-[10px] font-bold tracking-wider leading-none uppercase pt-0.5">
-              Active
-            </span>
+        {/* Status Badges */}
+        {(data?.status === 'active' || data?.status === 'sold') && (
+          <div className={`absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg shadow-md pointer-events-none ${data.status === 'sold' ? 'bg-red-600 text-white' : 'bg-[#0f172a] text-white'
+            }`}>
+            {data.status === 'sold' ? (
+              <span className="text-[10px] font-bold tracking-wider leading-none uppercase pt-0.5">SOLD</span>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-3.5 h-3.5"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span className="text-[10px] font-bold tracking-wider leading-none uppercase pt-0.5">
+                  Active
+                </span>
+              </>
+            )}
           </div>
         )}
+
+
+        {/* Listing Type Badge */}
+        <div className={`absolute top-12 left-3 z-10 px-3 py-1.5 rounded-lg shadow-md pointer-events-none text-white text-[10px] font-bold tracking-wider uppercase ${type === 'buy' ? 'bg-emerald-600' : 'bg-blue-600'
+          }`}>
+          {type === 'buy' ? 'For Sale' : 'For Rent'}
+        </div>
 
         {/* Top Right - Actions Overlay */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 z-20">

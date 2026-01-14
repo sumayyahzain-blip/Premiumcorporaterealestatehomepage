@@ -81,6 +81,7 @@ export interface Property {
     description: string | null;
     propertyType: PropertyType;
     listingType: ListingType;
+    listing_type: 'sale' | 'rent'; // Added to match text column in DB
     status: PropertyStatus;
 
     // Location
@@ -137,6 +138,10 @@ export interface Property {
     // Relations
     images?: PropertyImage[];
     contact_phone?: string;
+
+    // Analytics
+    view_count?: number;
+    lead_count?: number;
 }
 
 export interface PropertyImage {

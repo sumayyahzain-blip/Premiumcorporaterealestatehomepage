@@ -14,7 +14,7 @@ export default function AddProperty() {
     // Form State
     const [formData, setFormData] = useState({
         title: '',
-        type: 'buy', // 'buy' | 'rent'
+        listing_type: 'sale', // 'sale' | 'rent'
         price: '',
         address: '',
         beds: '',
@@ -22,7 +22,9 @@ export default function AddProperty() {
         sqft: '',
         imageUrl: '',
         contactPhone: '',
-        description: ''
+        description: '',
+        latitude: '',
+        longitude: ''
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -48,7 +50,7 @@ export default function AddProperty() {
         try {
             const dbData = {
                 title: formData.title,
-                type: formData.type,
+                listing_type: formData.listing_type,
                 price: Number(formData.price),
                 address: formData.address,
                 beds: Number(formData.beds) || 0,
@@ -57,6 +59,8 @@ export default function AddProperty() {
                 image_url: formData.imageUrl,
                 contact_phone: formData.contactPhone,
                 owner_id: user.id,
+                latitude: formData.latitude ? Number(formData.latitude) : null,
+                longitude: formData.longitude ? Number(formData.longitude) : null,
                 // description: formData.description // Assuming DB has this column, if not, omit
             };
 
@@ -105,15 +109,29 @@ export default function AddProperty() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Listing Type</label>
-                            <select
-                                name="type"
-                                value={formData.type}
-                                onChange={handleChange}
-                                className={inputClasses}
-                            >
-                                <option value="buy">For Sale</option>
-                                <option value="rent">For Rent</option>
-                            </select>
+                            <div className="flex bg-[#1e293b] p-1 rounded-xl border border-gray-700 h-[50px]">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, listing_type: 'sale' }))}
+                                    className={`flex-1 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-200 ${formData.listing_type === 'sale'
+                                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                        }`}
+                                >
+                                    For Sale
+                                </button>
+                                <div className="w-2" />
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, listing_type: 'rent' }))}
+                                    className={`flex-1 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-200 ${formData.listing_type === 'rent'
+                                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                        }`}
+                                >
+                                    For Rent
+                                </button>
+                            </div>
                         </div>
 
                         {/* Contact Phone - NEW FIELD */}
@@ -161,6 +179,43 @@ export default function AddProperty() {
                                 />
                             </div>
                         </div>
+                    </div>
+
+                    {/* GEOLOCATION - NEW SECTION */}
+                    <div className="md:col-span-2 grid grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Latitude</label>
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                                <input
+                                    type="number"
+                                    step="any"
+                                    name="latitude"
+                                    value={formData.latitude}
+                                    onChange={handleChange}
+                                    placeholder="40.7128"
+                                    className={`${inputClasses} pl-12`}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Longitude</label>
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                                <input
+                                    type="number"
+                                    step="any"
+                                    name="longitude"
+                                    value={formData.longitude}
+                                    onChange={handleChange}
+                                    placeholder="-74.0060"
+                                    className={`${inputClasses} pl-12`}
+                                />
+                            </div>
+                        </div>
+                        <p className="col-span-2 text-xs text-gray-500 italic">
+                            * Tip: You can get these value from Google Maps by right-clicking a location.
+                        </p>
                     </div>
 
                     {/* Details */}
@@ -258,8 +313,8 @@ export default function AddProperty() {
                         </button>
                     </div>
 
-                </form>
-            </div>
-        </div>
+                </form >
+            </div >
+        </div >
     );
 }

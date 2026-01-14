@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MessageCircle, X, Send, User, Bot, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { useAuth } from '../../hooks';
+import { useSupabaseAuth } from '../../lib/AuthContext';
 import { ChatMessage } from '../../types/api';
 
 /**
@@ -11,7 +11,8 @@ import { ChatMessage } from '../../types/api';
  * Connected to Supabase "Brain" (bot_knowledge).
  */
 export default function ChatWidget() {
-    const { isAuthenticated, user } = useAuth();
+    const { user } = useSupabaseAuth();
+    const isAuthenticated = !!user;
     const location = useLocation();
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
@@ -29,7 +30,7 @@ export default function ChatWidget() {
         headerGradient: "from-blue-800 to-indigo-900", // Navy/Dark Blue for Admin
         toggleGradient: "from-blue-600 to-indigo-700"
     } : {
-        name: "Concierge",
+        name: "Grade A AI",
         greeting: "Welcome to Grade A Realty! Are you looking to buy, sell, or rent today?",
         headerGradient: "from-emerald-600 to-emerald-800", // Emerald for Customer
         toggleGradient: "from-emerald-500 to-emerald-700"
@@ -127,18 +128,18 @@ export default function ChatWidget() {
         <div className="fixed bottom-24 right-6 z-[9999] flex flex-col items-end">
             {/* Chat Window */}
             {isOpen && (
-                <div className="mb-4 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col transition-all duration-200 animate-in slide-in-from-bottom-5 fade-in">
-                    {/* Header with Dynamic Context Color */}
-                    <div className={`p-4 bg-gradient-to-r ${config.headerGradient} flex items-center justify-between`}>
+                <div className="mb-4 w-80 md:w-96 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden flex flex-col transition-all duration-200 animate-in slide-in-from-bottom-5 fade-in ring-1 ring-black/5">
+                    {/* Header */}
+                    <div className={`p-4 bg-gradient-to-r ${config.headerGradient} flex items-center justify-between shadow-md`}>
                         <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-1.5 rounded-lg">
+                            <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm">
                                 <Bot size={20} className="text-white" />
                             </div>
                             <div>
-                                <h3 className="text-white font-medium text-sm">{config.name}</h3>
+                                <h3 className="text-white font-bold text-sm tracking-wide">{config.name}</h3>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                                    <span className="text-emerald-100 text-xs">Connected</span>
+                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgb(74,222,128)]"></span>
+                                    <span className="text-emerald-50 text-[10px] uppercase tracking-wider font-medium">Online</span>
                                 </div>
                             </div>
                         </div>
@@ -191,21 +192,40 @@ export default function ChatWidget() {
 
                     {/* Input Area */}
                     {isAuthenticated ? (
-                        <form onSubmit={handleSubmit} className="p-3 bg-white border-t border-gray-100 flex items-center gap-2">
-                            <input
-                                type="text"
-                                value={message}
-                                onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Ask anything..."
-                                className="flex-1 bg-gray-50 border-transparent focus:bg-white focus:border-emerald-200 focus:ring-2 focus:ring-emerald-100 rounded-xl px-4 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!message.trim() || isTyping}
-                                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2.5 rounded-xl transition-colors shrink-0"
-                            >
-                                {isTyping ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                            </button>
+                        <form onSubmit={handleSubmit} className="p-3 bg-white border-t border-gray-100">
+                            {messages.length < 3 && (
+                                <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
+                                    {['Price?', 'Location?', 'Schedule a tour', 'Contact Agent'].map(txt => (
+                                        <button
+                                            key={txt}
+                                            type="button"
+                                            onClick={() => setMessage(txt)}
+                                            className="whitespace-nowrap px-3 py-1.5 bg-gray-50 hover:bg-emerald-50 text-xs font-medium text-gray-600 hover:text-emerald-700 border border-gray-200 hover:border-emerald-200 rounded-full transition-colors"
+                                        >
+                                            {txt}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    placeholder="Ask anything..."
+                                    className="flex-1 bg-gray-50 border-transparent focus:bg-white focus:border-emerald-200 focus:ring-2 focus:ring-emerald-100 rounded-xl px-4 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!message.trim() || isTyping}
+                                    className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2.5 rounded-xl transition-all shadow-md shrink-0 active:scale-95"
+                                >
+                                    {isTyping ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                                </button>
+                            </div>
+                            <div className="text-center mt-2">
+                                <span className="text-[10px] text-gray-300 font-medium">Powered by Grade A AI</span>
+                            </div>
                         </form>
                     ) : (
                         <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
