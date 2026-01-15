@@ -197,7 +197,6 @@ export default function UserDashboard() {
                                     beds={property.bedrooms || 0}
                                     baths={property.bathrooms || 0}
                                     sqft={property.squareFeet || 0}
-                                    sqft={property.squareFeet || 0}
                                     data={property}
                                     onClick={() => navigate(`/property/${property.id}`)}
                                 />
