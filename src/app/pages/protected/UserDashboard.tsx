@@ -1,4 +1,4 @@
-
+// Redeploy Fix 1 // Vercel deployment fix
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Home, Loader2, AlertCircle, LogOut } from 'lucide-react';
