@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
-      {/* --- HEADER --- */}
+      {}
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -20,8 +20,6 @@ export default function App() {
           </nav>
         </div>
       </header>
-
-      {/* --- HERO SECTION --- */}
       <main>
         <div className="bg-blue-900 text-white py-20 px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
@@ -31,7 +29,7 @@ export default function App() {
             Browse exclusive listings for offices, commercial lots, and luxury condos.
           </p>
           
-          {/* Search Bar Placeholder */}
+          {}
           <div className="max-w-3xl mx-auto bg-white p-2 rounded-lg shadow-lg flex flex-col md:flex-row gap-2">
             <input 
               type="text" 
@@ -44,14 +42,14 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- CONTENT STATUS --- */}
+        {}
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-            <h2 className="text-2xl font-bold text-green-800 mb-2">✅ System Fully Operational</h2>
+            <h2 className="text-2xl font-bold text-green-800 mb-2"></h2>
             <p className="text-green-700">
-              We have successfully bypassed the localhost firewall issue.
+
               <br/>
-              You can now safely start uncommenting your original components one by one.
+
             </p>
           </div>
         </div>
