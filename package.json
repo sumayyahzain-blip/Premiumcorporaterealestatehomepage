@@ -3,8 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  
-  "engines":{
+  "engines": {
     "node": ">=18.18.0"
   },
   "scripts": {
@@ -88,6 +87,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.16.0",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
