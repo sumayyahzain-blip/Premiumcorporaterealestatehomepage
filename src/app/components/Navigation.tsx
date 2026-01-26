@@ -42,6 +42,7 @@ const Navbar = () => {
           <Link to="/properties" state={{ globalSearch: 'Buy' }} className="text-white hover:text-yellow-500 font-medium transition-colors">BUY</Link>
           <Link to="/properties" state={{ globalSearch: 'Rent' }} className="text-white hover:text-yellow-500 font-medium transition-colors">RENT</Link>
           <Link to="/sell" className="text-white hover:text-yellow-500 font-medium transition-colors">SELL</Link>
+          <Link to="/dashboard" className="text-white hover:text-yellow-500 font-medium transition-colors">DASHBOARD</Link>
         </div>
 
         {/* Action Buttons */}
