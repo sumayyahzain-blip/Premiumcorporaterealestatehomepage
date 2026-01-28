@@ -21,7 +21,7 @@ const Navbar = () => {
 
   return (
     <nav
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${isScrolled ? 'bg-[#0f172a] shadow-lg py-4' : 'bg-transparent py-6'
+      className={`fixed top-0 left-0 w-full z-[9999] transition-all duration-300 ease-in-out ${isScrolled ? 'bg-[#0f172a] shadow-lg py-4' : 'bg-transparent py-6'
         }`}
     >
       <div className="container mx-auto px-6 flex justify-between items-center">
@@ -39,8 +39,8 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
           <Link to="/" className="text-white hover:text-yellow-500 font-medium transition-colors">HOME</Link>
-          <Link to="/properties" state={{ globalSearch: 'Buy' }} className="text-white hover:text-yellow-500 font-medium transition-colors">BUY</Link>
-          <Link to="/properties" state={{ globalSearch: 'Rent' }} className="text-white hover:text-yellow-500 font-medium transition-colors">RENT</Link>
+          <Link to="/buy" className="text-white hover:text-yellow-500 font-medium transition-colors">BUY</Link>
+          <Link to="/rent" className="text-white hover:text-yellow-500 font-medium transition-colors">RENT</Link>
           <Link to="/sell" className="text-white hover:text-yellow-500 font-medium transition-colors">SELL</Link>
           <Link to="/dashboard" className="text-white hover:text-yellow-500 font-medium transition-colors">DASHBOARD</Link>
         </div>

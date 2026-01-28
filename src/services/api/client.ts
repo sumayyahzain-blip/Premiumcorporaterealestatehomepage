@@ -8,15 +8,15 @@ import { mockApiAdapter } from './mockAdapter';
 import { realApiAdapter } from './realAdapter';
 
 // Configuration to switch between Mock and Real API
-// Phase 2: Switching to Real API (make sure backend is running)
-const USE_MOCK_API = false;
+// Phase 2: Use MOCK until real backend (Supabase) is wired
+const USE_MOCK_API = true;
 
 /**
  * The main API client instance.
- * All application code should import 'api' from here, NOT the specific adapters.
+ * All application code should import `api` from here.
  */
 export const api: ApiClientInterface = USE_MOCK_API
-    ? mockApiAdapter
-    : realApiAdapter;
+  ? mockApiAdapter
+  : realApiAdapter;
 
 export default api;
